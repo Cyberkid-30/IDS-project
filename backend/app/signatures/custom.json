@@ -1,0 +1,23 @@
+{
+  "signatures": [
+    {
+      "name": "Custom Signature Template",
+      "description": "Example custom signature - modify or add your own.",
+      "protocol": "tcp",
+      "source_ip": null,
+      "source_port": null,
+      "dest_ip": null,
+      "dest_port": "8080",
+      "pattern": "example_pattern",
+      "severity": "low",
+      "enabled": false,
+      "category": "custom",
+      "reference": null
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Custom signatures - add your organization-specific rules here",
+    "last_updated": "2024-01-01"
+  }
+}
