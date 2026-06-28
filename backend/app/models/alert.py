@@ -55,7 +55,7 @@ class Alert(Base, IDMixin, TimestampMixin):
 
     # Link to signature
     signature_id = Column(
-        Integer,
+        String(36),
         ForeignKey("signatures.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -132,9 +132,9 @@ class Alert(Base, IDMixin, TimestampMixin):
             "dest_port": self.dest_port,
             "protocol": self.protocol,
             "payload_snippet": self.payload_snippet,
-            "severity": self.severity.value if self.severity else None, # type: ignore
+            "severity": self.severity.value if self.severity else None,  # type: ignore
             "status": self.status,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None, # type: ignore
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,  # type: ignore
             "packet_count": self.packet_count,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,  # type: ignore
         }

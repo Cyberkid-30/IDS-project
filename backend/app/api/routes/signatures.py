@@ -108,7 +108,7 @@ def get_categories(db: Session = Depends(get_database)):
     summary="Get signature by ID",
     description="Retrieve a specific signature by its ID.",
 )
-def get_signature(signature_id: int, db: Session = Depends(get_database)):
+def get_signature(signature_id: str, db: Session = Depends(get_database)):
     """
     Get a specific signature by ID.
 
@@ -195,7 +195,7 @@ def create_signature(
     description="Update an existing signature.",
 )
 def update_signature(
-    signature_id: int,
+    signature_id: str,
     signature_data: SignatureUpdate,
     db: Session = Depends(get_database),
 ):
@@ -257,7 +257,7 @@ def update_signature(
     summary="Delete signature",
     description="Delete a signature.",
 )
-def delete_signature(signature_id: int, db: Session = Depends(get_database)):
+def delete_signature(signature_id: str, db: Session = Depends(get_database)):
     """
     Delete a signature.
 
@@ -292,7 +292,7 @@ def delete_signature(signature_id: int, db: Session = Depends(get_database)):
     summary="Toggle signature",
     description="Enable or disable a signature.",
 )
-def toggle_signature(signature_id: int, db: Session = Depends(get_database)):
+def toggle_signature(signature_id: str, db: Session = Depends(get_database)):
     """
     Toggle a signature's enabled status.
 

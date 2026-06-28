@@ -129,7 +129,7 @@ class AlertManager:
         Returns:
             Alert: Updated alert
         """
-        alert.packet_count += 1 # type: ignore
+        alert.packet_count += 1  # type: ignore
         alert.timestamp = datetime.now()  # type: ignore # Update to latest time
 
         ids_logger.debug(
@@ -191,7 +191,7 @@ class AlertManager:
 
         return alerts, total
 
-    def get_alert_by_id(self, db: Session, alert_id: int) -> Optional[Alert]:
+    def get_alert_by_id(self, db: Session, alert_id: str) -> Optional[Alert]:
         """
         Get a single alert by ID.
 
@@ -205,7 +205,7 @@ class AlertManager:
         return db.query(Alert).filter(Alert.id == alert_id).first()
 
     def update_alert_status(
-        self, db: Session, alert_id: int, status: str
+        self, db: Session, alert_id: str, status: str
     ) -> Optional[Alert]:
         """
         Update an alert's status.
@@ -220,12 +220,12 @@ class AlertManager:
         """
         alert = self.get_alert_by_id(db, alert_id)
         if alert:
-            alert.status = status # type: ignore
+            alert.status = status  # type: ignore
             db.flush()
             ids_logger.info(f"Alert {alert_id} status updated to {status}")
         return alert
 
-    def delete_alert(self, db: Session, alert_id: int) -> bool:
+    def delete_alert(self, db: Session, alert_id: str) -> bool:
         """
         Delete an alert.
 
@@ -340,5 +340,3 @@ class AlertManager:
 
         ids_logger.info(f"Cleaned up {deleted} alerts older than {days} days")
         return deleted
-
-

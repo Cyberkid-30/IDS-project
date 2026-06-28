@@ -138,16 +138,16 @@ class Signature(Base, IDMixin, TimestampMixin):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "protocol": self.protocol.value if self.protocol else None, # type: ignore
+            "protocol": self.protocol.value if self.protocol else None,  # type: ignore
             "source_ip": self.source_ip,
             "source_port": self.source_port,
             "dest_ip": self.dest_ip,
             "dest_port": self.dest_port,
             "pattern": self.pattern,
-            "severity": self.severity.value if self.severity else None, # type: ignore
+            "severity": self.severity.value if self.severity else None,  # type: ignore
             "enabled": self.enabled,
             "category": self.category,
             "reference": self.reference,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,  # type: ignore
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,  # type: ignore
         }

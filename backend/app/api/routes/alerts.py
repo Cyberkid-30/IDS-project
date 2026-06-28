@@ -113,7 +113,7 @@ def get_alert_stats(
     description="Retrieve a specific alert by its ID.",
 )
 def get_alert(
-    alert_id: int,
+    alert_id: str,
     db: Session = Depends(get_database),
     alert_manager: AlertManager = Depends(get_alerts_manager),
 ):
@@ -145,7 +145,7 @@ def get_alert(
     description="Update the status of an alert (acknowledge, resolve, etc.).",
 )
 def update_alert_status(
-    alert_id: int,
+    alert_id: str,
     status_update: AlertStatusUpdate,
     db: Session = Depends(get_database),
     alert_manager: AlertManager = Depends(get_alerts_manager),
@@ -185,7 +185,7 @@ def update_alert_status(
     description="Delete a specific alert.",
 )
 def delete_alert(
-    alert_id: int,
+    alert_id: str,
     db: Session = Depends(get_database),
     alert_manager: AlertManager = Depends(get_alerts_manager),
 ):

@@ -45,7 +45,7 @@ class TimestampMixin:
 
 class IDMixin:
     """
-    Mixin that adds auto-incrementing primary key ID.
+    Mixin that adds a UUID primary key.
     """
 
     id = Column(
