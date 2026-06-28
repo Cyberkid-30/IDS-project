@@ -48,7 +48,7 @@ class AlertResponse(AlertBase):
     """
 
     id: str = Field(..., description="Unique alert ID")
-    signature_id: int = Field(..., description="Triggering signature ID")
+    signature_id: str = Field(..., description="Triggering signature ID")
     signature_name: Optional[str] = Field(
         None, description="Name of triggering signature"
     )
