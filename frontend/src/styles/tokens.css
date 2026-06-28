@@ -1,0 +1,120 @@
+:root {
+  /* Surfaces */
+  --bg: #0a0d0e;
+  --bg-raised: #12161a;
+  --bg-panel: #151a1e;
+  --bg-inset: #0d1012;
+  --border: #1f262b;
+  --border-bright: #2c363c;
+
+  /* Text */
+  --text-primary: #eef3f5;
+  --text-secondary: #9aabb2;
+  --text-tertiary: #5f7077;
+  --text-disabled: #3c474c;
+
+  /* Signal / status */
+  --signal-active: #3ddc84;
+  --signal-active-dim: #1f6e44;
+  --signal-idle: #3c474c;
+
+  /* Severity ramp — cool (low risk) to hot (critical) */
+  --sev-low: #5b8def;
+  --sev-low-bg: rgba(91, 141, 239, 0.12);
+  --sev-medium: #e8a84c;
+  --sev-medium-bg: rgba(232, 168, 76, 0.12);
+  --sev-high: #e8633c;
+  --sev-high-bg: rgba(232, 99, 60, 0.12);
+  --sev-critical: #e8395c;
+  --sev-critical-bg: rgba(232, 57, 92, 0.14);
+
+  /* Status (alert lifecycle) */
+  --status-new: #5b8def;
+  --status-ack: #e8a84c;
+  --status-resolved: #3ddc84;
+  --status-false: #5f7077;
+
+  /* Type */
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Layout */
+  --rail-width: 220px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, button, textarea {
+  font-family: inherit;
+}
+
+::selection {
+  background: rgba(61, 220, 132, 0.25);
+}
+
+/* scrollbars: keep them quiet */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal-active);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
