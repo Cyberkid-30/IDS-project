@@ -134,7 +134,7 @@ class SignatureResponse(SignatureBase):
     Includes database-generated fields like ID and timestamps.
     """
 
-    id: int = Field(..., description="Unique signature ID")
+    id: str = Field(..., description="Unique signature ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 

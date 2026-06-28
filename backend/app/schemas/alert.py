@@ -47,7 +47,7 @@ class AlertResponse(AlertBase):
     Contains full alert information including signature details.
     """
 
-    id: int = Field(..., description="Unique alert ID")
+    id: str = Field(..., description="Unique alert ID")
     signature_id: int = Field(..., description="Triggering signature ID")
     signature_name: Optional[str] = Field(
         None, description="Name of triggering signature"
@@ -100,6 +100,6 @@ class AlertFilter(BaseModel):
     status: Optional[AlertStatus] = None
     source_ip: Optional[str] = None
     dest_ip: Optional[str] = None
-    signature_id: Optional[int] = None
+    signature_id: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None

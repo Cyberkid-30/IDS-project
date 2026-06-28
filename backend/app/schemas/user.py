@@ -4,12 +4,14 @@ from datetime import datetime
 
 
 class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Unique username")
+    username: str = Field(
+        ..., min_length=3, max_length=50, description="Unique username"
+    )
     password: str = Field(..., min_length=6, max_length=100, description="Password")
 
 
 class UserResponse(BaseModel):
-    id: int = Field(..., description="Unique user ID")
+    id: str = Field(..., description="Unique user ID")
     username: str = Field(..., description="Username")
     is_active: bool = Field(..., description="Whether user is active")
     created_at: datetime = Field(..., description="Account creation time")

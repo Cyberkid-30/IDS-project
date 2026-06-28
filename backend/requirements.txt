@@ -9,6 +9,7 @@ pydantic-settings
 
 # Database
 sqlalchemy
+alembic
 
 # Packet Capture
 scapy

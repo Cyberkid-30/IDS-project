@@ -6,11 +6,18 @@ and common model mixins for shared functionality.
 """
 
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Integer
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy.orm import DeclarativeBase
+from uuid import uuid4
+
 
 # Create the declarative base for all models
-Base = declarative_base()
+class Base(DeclarativeBase):
+    """
+    Base class for all SQLAlchemy models.
+    """
+
+    pass
 
 
 class TimestampMixin:
@@ -42,9 +49,9 @@ class IDMixin:
     """
 
     id = Column(
-        Integer,
+        String(36),
         primary_key=True,
-        autoincrement=True,
+        default=lambda: str(uuid4()),
         index=True,
         doc="Unique identifier",
     )
