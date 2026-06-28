@@ -1,8 +1,12 @@
-# Network Intrusion Detection System (IDS) Backend
+# SentryWatch — Network Intrusion Detection System (IDS)
 
-A signature-based Network Intrusion Detection System designed for small-scale business networks. Built with Python, FastAPI, and Scapy. This repository supports Ubuntu (Linux) systems only.
+A signature-based Network Intrusion Detection System for small-scale business networks, featuring a real-time web dashboard. Built with **Python (FastAPI + Scapy)** on the backend and **React (Vite)** on the frontend.
+
+---
 
 ## Features
+
+### Backend (Python/FastAPI)
 
 - **Packet Capture**: Real-time network traffic capture using Scapy
 - **Signature-Based Detection**: Pattern matching against known attack signatures
@@ -10,44 +14,53 @@ A signature-based Network Intrusion Detection System designed for small-scale bu
 - **Alert Management**: View, filter, and manage security alerts
 - **SQLite Database**: Lightweight, file-based storage
 - **Extensible Signatures**: JSON-based signature definitions
-- **Dependency Injection**: Services wired through FastAPI DI — no global singletons, mock-friendly for testing
-- **Async Control Endpoints**: Detection start/stop/reload are async FastAPI handlers — DB I/O offloaded to a thread pool, event loop stays free
+- **User Authentication**: JWT-based auth with Argon2 password hashing (register, login, token-protected endpoints)
 - **Bounded Packet Queue**: Captured packets are pushed onto a bounded queue and processed in batches by a dedicated writer thread — reduces SQLite lock contention under load
-- **Comprehensive Test Suite**: 148 unit + integration tests covering utilities, services, and all API endpoints
+- **Comprehensive Test Suite**: 148+ unit and integration tests
 
-## Supported Platforms
+### Frontend (React/Vite)
 
-- Ubuntu Linux (tested on Ubuntu 20.04 / 22.04)
-
-## Requirements
-
-- Python 3.10+
-- Root privileges or `CAP_NET_RAW` capability for packet capture
+- **Live Dashboard**: Real-time detection status, alert stats, severity breakdown, top source IPs, and most triggered signatures
+- **Alert Management**: Paginated, filterable alert list with inline status changes and delete confirmation
+- **Signature CRUD**: Full create, read, update, delete, and toggle for detection signatures
+- **Detection Engine Control**: Start/stop detection, reload signatures, view system config and network info
+- **Configurable Backend URL**: Change the API target at runtime via the System page (no rebuild required)
+- **Dark-Themed UI**: Modern, responsive design with animated status indicators
+- **Smart Polling**: Auto-polls the backend; pauses when the browser tab is hidden
 
 ---
 
-## Quick Start - Ubuntu/Linux
+## System Requirements
 
-### 1. Setup Environment
+- **OS**: Ubuntu Linux 20.04 / 22.04 (packet capture tested on Linux)
+- **Python**: 3.10+
+- **Node.js**: 18+
+- **npm**: 9+
+- **Root privileges** or `CAP_NET_RAW` capability for packet capture
+
+---
+
+## Quick Start
+
+### 1. Clone & Setup Backend
 
 ```bash
-cd ids-backend
+# Navigate to the backend directory
+cd backend
 
-# Create virtual environment
+# Create Python virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configure
+### 2. Configure Backend
 
 ```bash
 # Find your network interface
 ip link
-# or
-ip addr
 
 # Edit configuration
 nano .env
@@ -60,15 +73,15 @@ NETWORK_INTERFACE=eth0
 # Common names: eth0, ens33, enp0s3, wlan0
 ```
 
-### 3. Initialize Database
+### 3. Initialize Backend Database
 
 ```bash
 python scripts/load_signatures.py
 ```
 
-### 4. Run the Server
+### 4. Run Backend Server
 
-There are two common options to provide packet-capture permissions:
+Choose one option for packet-capture permissions:
 
 **Option A: Run with sudo (Development)**
 
@@ -79,7 +92,7 @@ sudo venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 **Option B: Set `CAP_NET_RAW` capability (Recommended for production-like usage)**
 
 ```bash
-# One-time setup (set capability on the venv Python)
+# One-time setup
 sudo setcap cap_net_raw+ep venv/bin/python3
 
 # Run without sudo
@@ -93,84 +106,253 @@ chmod +x scripts/start_ids.sh
 sudo ./scripts/start_ids.sh --dev
 ```
 
-### 5. Start Detection
+The API will be available at `http://localhost:8000`.
+
+### 5. Setup Frontend
+
+Open a new terminal:
 
 ```bash
-# Start detection engine
-curl -X POST http://localhost:8000/api/v1/system/detection/start
+# Navigate to the frontend directory
+cd frontend
+
+# Install Node.js dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+The web interface will be available at `http://localhost:5173`.
+
+> **Note**: The frontend connects to the backend at `http://localhost:8000` by default. You can change this URL at runtime in the System page of the web UI.
+
+### 6. Authenticate & Start Detection
+
+**Via the Web UI:**
+
+1. Open `http://localhost:5173`
+2. The backend auto-seeds a default admin account
+3. Use the API directly to login (web UI auth coming soon):
+
+**Via the API:**
+
+```bash
+# Login with the default admin account
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Start the detection engine
+curl -X POST http://localhost:8000/api/v1/system/detection/start \
+  -H "Authorization: Bearer $TOKEN"
 
 # Check status
-curl http://localhost:8000/api/v1/system/status
+curl http://localhost:8000/api/v1/system/status \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+> **Default credentials**: `admin` / `admin123` (seeded automatically on first backend startup)
+
+---
+
+## Accessing the Application
+
+| Interface              | URL                         | Description                   |
+| ---------------------- | --------------------------- | ----------------------------- |
+| **Web UI**             | http://localhost:5173       | SentryWatch IDS Console       |
+| **API Docs (Swagger)** | http://localhost:8000/docs  | Interactive API documentation |
+| **API Docs (ReDoc)**   | http://localhost:8000/redoc | Alternative API docs          |
+| **API Health**         | http://localhost:8000/ping  | Simple health check           |
+
+---
+
+## Project Structure
+
+```
+ids-project/
+├── backend/                      # Python/FastAPI backend
+│   ├── app/
+│   │   ├── main.py               # FastAPI application entry
+│   │   ├── core/                 # Configuration, logging, and auth
+│   │   │   ├── config.py         # Pydantic settings
+│   │   │   ├── logging.py        # Loguru setup
+│   │   │   └── auth.py           # JWT + Argon2 password hashing
+│   │   ├── database/             # SQLAlchemy setup
+│   │   ├── models/               # Database models (includes User)
+│   │   ├── schemas/              # Pydantic schemas
+│   │   ├── services/             # Business logic
+│   │   │   ├── sniffer.py        # Packet capture
+│   │   │   ├── parser.py         # Packet parsing
+│   │   │   ├── matcher.py        # Signature matching
+│   │   │   ├── detector.py       # Detection engine
+│   │   │   └── alert_manager.py  # Alert CRUD and aggregation
+│   │   ├── api/                  # REST API routes
+│   │   │   ├── deps.py           # FastAPI DI container
+│   │   │   ├── auth_deps.py      # Auth dependency
+│   │   │   └── routes/           # Endpoint definitions
+│   │   ├── signatures/           # JSON signature files
+│   │   └── workers/              # Background workers
+│   ├── data/                     # Database and logs
+│   ├── scripts/                  # Utility scripts
+│   ├── tests/                    # 148+ unit and integration tests
+│   ├── requirements.txt
+│   └── .env
+│
+├── frontend/                     # React/Vite web UI
+│   ├── src/
+│   │   ├── main.jsx              # React entry point
+│   │   ├── App.jsx               # Router and layout
+│   │   ├── api/                  # Backend API client
+│   │   │   ├── client.js         # Fetch wrapper (configurable base URL)
+│   │   │   ├── alerts.js         # Alert API calls
+│   │   │   ├── signatures.js     # Signature API calls
+│   │   │   ├── system.js         # System API calls
+│   │   │   └── format.js         # Formatting helpers
+│   │   ├── pages/                # Route pages
+│   │   │   ├── Dashboard.jsx     # Live stats and overview
+│   │   │   ├── Alerts.jsx        # Paginated alert list
+│   │   │   ├── AlertDetail.jsx   # Single alert view
+│   │   │   ├── Signatures.jsx    # Signature CRUD
+│   │   │   └── SystemPage.jsx    # Engine control and config
+│   │   ├── components/           # Reusable UI components
+│   │   │   ├── NavRail.jsx       # Sidebar navigation
+│   │   │   ├── PulseStrip.jsx    # Animated status indicator
+│   │   │   ├── ConnectionBanner.jsx
+│   │   │   ├── Panel.jsx         # Card container
+│   │   │   ├── Modal.jsx         # Overlay dialog
+│   │   │   ├── SignatureForm.jsx # Signature editor form
+│   │   │   ├── SeverityBadge.jsx
+│   │   │   ├── StatusBadge.jsx
+│   │   │   ├── StatTile.jsx
+│   │   │   └── EmptyState.jsx
+│   │   ├── hooks/
+│   │   │   └── usePolling.js     # Auto-polling with tab visibility
+│   │   └── styles/
+│   │       ├── tokens.css        # Design tokens (dark theme)
+│   │       └── components.css    # Component styles
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   ├── index.html
+│   ├── vite.config.js
+│   └── package.json
+│
+├── README.md
 ```
 
 ---
 
-## Access the API
+## Web UI Pages
 
-- **API Documentation**: http://localhost:8000/docs
-- **Alternative Docs**: http://localhost:8000/redoc
-- **Health Check**: http://localhost:8000/ping
+| Page             | Route         | Description                                                                                                            |
+| ---------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**    | `/`           | Live detection status, alert stats, severity bar chart, top source IPs, most triggered signatures, recent alerts       |
+| **Alerts**       | `/alerts`     | Paginated alert table with severity/status/source IP filters, inline status change, and delete                         |
+| **Alert Detail** | `/alerts/:id` | Full alert details, payload snippet, connection info, signature info, status change                                    |
+| **Signatures**   | `/signatures` | Signature CRUD table with enable/disable toggle, edit modal, create modal, category/severity filters                   |
+| **System**       | `/system`     | Detection engine start/stop, reload signatures, network info, config display, alert cleanup, backend URL configuration |
 
-## API Endpoints
+The UI polls the backend at configurable intervals (dashboards polls every 4–5s). Polling pauses automatically when the browser tab is hidden.
+
+---
+
+## Backend API Endpoints
+
+> All endpoints under `/api/v1/*` (except `/auth/register` and `/auth/login`) require a JWT Bearer token in the `Authorization` header.
+
+### Authentication (Public)
+
+| Method | Endpoint                | Description              |
+| ------ | ----------------------- | ------------------------ |
+| POST   | `/api/v1/auth/register` | Create a new user        |
+| POST   | `/api/v1/auth/login`    | Login, get JWT token     |
+| GET    | `/api/v1/auth/me`       | Get current user details |
 
 ### System Control
 
-| Method | Endpoint                           | Description          |
-| ------ | ---------------------------------- | -------------------- |
-| GET    | `/api/v1/system/health`            | Health check         |
-| GET    | `/api/v1/system/status`            | System status        |
-| GET    | `/api/v1/system/network`           | Network interfaces   |
-| GET    | `/api/v1/system/config`            | Current config       |
-| POST   | `/api/v1/system/detection/start`   | Start detection      |
-| POST   | `/api/v1/system/detection/stop`    | Stop detection       |
-| POST   | `/api/v1/system/signatures/reload` | Reload signatures    |
+| Method | Endpoint                           | Description        |
+| ------ | ---------------------------------- | ------------------ |
+| GET    | `/api/v1/system/health`            | Health check       |
+| GET    | `/api/v1/system/status`            | System status      |
+| GET    | `/api/v1/system/network`           | Network interfaces |
+| GET    | `/api/v1/system/config`            | Current config     |
+| POST   | `/api/v1/system/detection/start`   | Start detection    |
+| POST   | `/api/v1/system/detection/stop`    | Stop detection     |
+| POST   | `/api/v1/system/signatures/reload` | Reload signatures  |
 
 ### Alerts
 
-| Method | Endpoint                     | Description                 |
-| ------ | ---------------------------- | --------------------------- |
-| GET    | `/api/v1/alerts`             | List alerts (paginated)     |
-| GET    | `/api/v1/alerts/{id}`        | Get alert details           |
-| PATCH  | `/api/v1/alerts/{id}/status` | Update alert status         |
-| DELETE | `/api/v1/alerts/{id}`        | Delete alert                |
-| GET    | `/api/v1/alerts/stats`       | Alert statistics            |
+| Method | Endpoint                     | Description                     |
+| ------ | ---------------------------- | ------------------------------- |
+| GET    | `/api/v1/alerts`             | List alerts (paginated)         |
+| GET    | `/api/v1/alerts/{id}`        | Get alert details               |
+| PATCH  | `/api/v1/alerts/{id}/status` | Update alert status             |
+| DELETE | `/api/v1/alerts/{id}`        | Delete alert                    |
+| GET    | `/api/v1/alerts/stats`       | Alert statistics                |
 | POST   | `/api/v1/alerts/cleanup`     | Delete alerts older than N days |
 
 ### Signatures
 
-| Method | Endpoint                         | Description             |
-| ------ | -------------------------------- | ----------------------- |
-| GET    | `/api/v1/signatures`             | List signatures         |
-| POST   | `/api/v1/signatures`             | Create signature        |
-| GET    | `/api/v1/signatures/{id}`        | Get signature           |
-| PUT    | `/api/v1/signatures/{id}`        | Update signature        |
-| DELETE | `/api/v1/signatures/{id}`        | Delete signature        |
-| POST   | `/api/v1/signatures/{id}/toggle` | Toggle enabled          |
+| Method | Endpoint                         | Description               |
+| ------ | -------------------------------- | ------------------------- |
+| GET    | `/api/v1/signatures`             | List signatures           |
+| POST   | `/api/v1/signatures`             | Create signature          |
+| GET    | `/api/v1/signatures/{id}`        | Get signature             |
+| PUT    | `/api/v1/signatures/{id}`        | Update signature          |
+| DELETE | `/api/v1/signatures/{id}`        | Delete signature          |
+| POST   | `/api/v1/signatures/{id}/toggle` | Toggle enabled            |
 | GET    | `/api/v1/signatures/categories`  | List signature categories |
 
+---
+
 ## Usage Examples
+
+> **Note**: All API endpoints (except `/`, `/ping`, `/auth/register`, `/auth/login`) require a JWT Bearer token in the `Authorization` header.
+
+### Authentication
+
+```bash
+# Register a new user
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "analyst", "password": "securepass123"}'
+
+# Login and capture the token
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Check your auth status
+curl http://localhost:8000/api/v1/auth/me \
+  -H "Authorization: Bearer $TOKEN"
+```
 
 ### Start Detection
 
 ```bash
-# Start the detection engine
-curl -X POST http://localhost:8000/api/v1/system/detection/start
+curl -X POST http://localhost:8000/api/v1/system/detection/start \
+  -H "Authorization: Bearer $TOKEN"
 
 # Check status
-curl http://localhost:8000/api/v1/system/status
+curl http://localhost:8000/api/v1/system/status \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### View Alerts
 
 ```bash
 # Get all alerts
-curl http://localhost:8000/api/v1/alerts
+curl http://localhost:8000/api/v1/alerts \
+  -H "Authorization: Bearer $TOKEN"
 
 # Filter by severity
-curl "http://localhost:8000/api/v1/alerts?severity=critical"
+curl "http://localhost:8000/api/v1/alerts?severity=critical" \
+  -H "Authorization: Bearer $TOKEN"
 
 # Get alert statistics
-curl http://localhost:8000/api/v1/alerts/stats
+curl http://localhost:8000/api/v1/alerts/stats \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Manage Signatures
@@ -179,6 +361,7 @@ curl http://localhost:8000/api/v1/alerts/stats
 # Create a new signature
 curl -X POST http://localhost:8000/api/v1/signatures \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "name": "Custom SSH Alert",
     "description": "Detect SSH connections",
@@ -189,67 +372,28 @@ curl -X POST http://localhost:8000/api/v1/signatures \
   }'
 
 # Toggle signature on/off
-curl -X POST http://localhost:8000/api/v1/signatures/1/toggle
+curl -X POST http://localhost:8000/api/v1/signatures/1/toggle \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-## Project Structure
-
-```
-ids-backend/
-├── app/
-│   ├── main.py              # FastAPI application entry
-│   ├── core/                # Configuration and logging
-│   ├── database/            # SQLAlchemy setup
-│   ├── models/              # Database models
-│   ├── schemas/             # Pydantic schemas
-│   ├── services/            # Business logic (no global singletons)
-│   │   ├── sniffer.py       # Packet capture
-│   │   ├── parser.py        # Packet parsing
-│   │   ├── matcher.py       # Signature matching
-│   │   ├── detector.py      # Detection engine (bounded packet queue + batch writer thread)
-│   │   └── alert_manager.py # Alert handling
-│   ├── api/                 # REST API routes
-│   │   ├── deps.py          # FastAPI DI container
-│   │   └── routes/          # Endpoint definitions
-│   ├── signatures/          # JSON signature files
-│   └── workers/             # Background workers
-├── data/                    # Database and logs
-├── scripts/                 # Utility scripts
-├── tests/                   # 148 unit + integration tests
-│   ├── test_utils/          # IP & regex utility tests
-│   ├── test_services/       # Matcher & alert manager tests
-│   └── test_api/            # System, alert & signature endpoint tests
-├── requirements.txt
-├── .env
-└── README.md
-```
-
-## Adding Custom Signatures
+### Adding Custom Signatures
 
 Edit `app/signatures/custom.json` and then reload:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/system/signatures/reload
+curl -X POST http://localhost:8000/api/v1/system/signatures/reload \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-## Permissions for Packet Capture
-
-Run the server with elevated privileges or grant the `CAP_NET_RAW` capability to the Python interpreter used by the virtual environment.
-
-```bash
-# One-time: set capability on the venv Python
-sudo setcap cap_net_raw+ep venv/bin/python3
-
-# Development (quick): run with sudo
-sudo venv/bin/uvicorn app.main:app --reload
-```
+---
 
 ## Running Tests
 
-The project includes **148 tests** covering utilities, services, and all API endpoints.
+### Backend Tests (148+ tests)
 
 ```bash
-# Run the full suite from the project root
+cd backend
+source venv/bin/activate
 pytest tests/ -v
 
 # Run a specific test file
@@ -260,15 +404,38 @@ pip install pytest-cov
 pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-**Test layout:**
+**Backend test layout:**
 
-| Directory | Contents |
-|-----------|----------|
-| `tests/test_utils/` | IP validation, CIDR matching, regex compilation & matching |
+| Directory              | Contents                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `tests/test_utils/`    | IP validation, CIDR matching, regex compilation & matching                          |
 | `tests/test_services/` | Signature matcher (protocol/port/payload), alert manager (CRUD, aggregation, stats) |
-| `tests/test_api/` | System control, alert CRUD, signature CRUD — all via TestClient |
+| `tests/test_api/`      | System control, alert CRUD, signature CRUD — all via TestClient                     |
 
-Tests use an in-memory SQLite database with per-test transaction rollback for full isolation. The detection engine and permission checks are mocked so root access is never required.
+Tests use an in-memory SQLite database with per-test transaction rollback. The detection engine and permission checks are mocked so root access is never required.
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm run lint   # Run Oxlint (React linting)
+```
+
+---
+
+## Permissions for Packet Capture
+
+Run the server with elevated privileges or grant the `CAP_NET_RAW` capability to the Python interpreter:
+
+```bash
+# One-time: set capability on the venv Python
+sudo setcap cap_net_raw+ep venv/bin/python3
+
+# Development (quick): run with sudo
+sudo venv/bin/uvicorn app.main:app --reload
+```
+
+---
 
 ## Testing with Kali Linux
 
@@ -285,16 +452,11 @@ ping <target_ip>
 curl "http://<target_ip>:8080/?id=1' OR '1'='1'"
 ```
 
-## Troubleshooting (Ubuntu)
+---
 
-- "Permission denied" on packet capture: ensure `CAP_NET_RAW` is set or run with `sudo`.
-- No alerts generated: check `GET /api/v1/system/status`, verify signatures with `GET /api/v1/signatures`, confirm `.env` interface, and ensure traffic flows through the monitored interface.
-- Database errors: remove `data/ids.db` and re-run `python scripts/load_signatures.py`.
+## Troubleshooting
 
-## License
-
-MIT License - See LICENSE file for details.
-
-## Author
-
-Final Year Project - Network Intrusion Detection System
+- **"Permission denied" on packet capture**: ensure `CAP_NET_RAW` is set or run with `sudo`.
+- **No alerts generated**: check the System page in the web UI (or `GET /api/v1/system/status`), verify signatures are loaded (`GET /api/v1/signatures`), confirm the `.env` interface is correct, and ensure traffic flows through the monitored interface.
+- **Frontend shows "Backend unreachable"**: ensure the backend server is running on port 8000, or update the API URL in the System page of the web UI.
+- **Database errors**: remove `data/ids.db` and re-run `python scripts/load_signatures.py`.
