@@ -16,9 +16,9 @@ scapy
 # Logging
 loguru
 
-# Utilities
-python-dotenv
-python-multipart
+# Authentication
+PyJWT
+pwdlib[argon2]
 
 # Development (optional)
 pytest
