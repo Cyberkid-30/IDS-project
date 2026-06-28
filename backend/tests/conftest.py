@@ -13,6 +13,8 @@ from app.api.deps import get_database, get_detector, get_alerts_manager
 from app.services.detector import DetectionEngine
 from app.services.alert_manager import AlertManager
 from app.models.signature import Signature, SeverityLevel, ProtocolType
+from app.models.user import User
+from app.core.auth import hash_password, create_access_token
 from app.main import app
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -150,7 +152,29 @@ def _patch_permissions(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture
-def client(db_session: Session, mock_detector: MockDetectionEngine) -> Generator[TestClient, None, None]:
+def test_user(db_session: Session) -> User:
+    user = User(
+        username="testuser",
+        hashed_password=hash_password("testpass123"),
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+@pytest.fixture
+def auth_headers(test_user: User) -> dict:
+    token = create_access_token(data={"sub": test_user.username})
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def client(
+    db_session: Session,
+    mock_detector: MockDetectionEngine,
+    auth_headers: dict,
+) -> Generator[TestClient, None, None]:
     def override_get_database():
         yield db_session
 
@@ -161,11 +185,7 @@ def client(db_session: Session, mock_detector: MockDetectionEngine) -> Generator
     app.dependency_overrides[get_detector] = override_get_detector
 
     with TestClient(app) as c:
+        c.headers.update(auth_headers)
         yield c
 
     app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def auth_headers() -> dict:
-    return {}

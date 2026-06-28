@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # Alert settings
     ALERT_RETENTION_DAYS: int = 30
 
+    # JWT settings
+    SECRET_KEY: str = "change-me-to-a-secure-random-secret-key"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+
     # API settings
     API_PREFIX: str = "/api/v1"
     ALLOWED_HOSTS: List[str] = ["*"]

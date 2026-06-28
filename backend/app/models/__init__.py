@@ -1,12 +1,7 @@
-"""
-Models package initialization.
-
-Exports all database models for easy importing.
-"""
-
 from app.models.signature import Signature, SeverityLevel, ProtocolType
 from app.models.alert import Alert, AlertStatus
 from app.models.packet import Packet
+from app.models.user import User
 
 __all__ = [
     "Signature",
@@ -15,4 +10,5 @@ __all__ = [
     "Alert",
     "AlertStatus",
     "Packet",
+    "User",
 ]

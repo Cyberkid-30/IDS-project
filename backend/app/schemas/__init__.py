@@ -23,6 +23,12 @@ from app.schemas.alert import (
     AlertStatus,
     SeverityLevel as AlertSeverity,
 )
+from app.schemas.user import (
+    UserCreate,
+    UserResponse,
+    Token,
+    TokenData,
+)
 
 __all__ = [
     # Signature schemas
@@ -42,4 +48,9 @@ __all__ = [
     "AlertFilter",
     "AlertStatus",
     "AlertSeverity",
+    # User schemas
+    "UserCreate",
+    "UserResponse",
+    "Token",
+    "TokenData",
 ]

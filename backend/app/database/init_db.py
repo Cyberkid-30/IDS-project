@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import inspect
 
 from app.database.base import Base
-from app.database.session import engine
+from app.database.session import engine, SessionLocal
 from app.core.logging import ids_logger
 from app.core.config import settings
 
@@ -21,7 +21,7 @@ def create_tables() -> None:
     it only creates tables that don't exist.
     """
     # Import all models to register them with Base
-    from app.models import signature, alert, packet  # noqa: F401
+    from app.models import signature, alert, packet, user  # noqa: F401
 
     ids_logger.info("Creating database tables...")
     Base.metadata.create_all(bind=engine)
@@ -77,6 +77,36 @@ def init_database() -> None:
     tables = get_table_names()
     ids_logger.info(f"Database initialized with tables: {tables}")
 
+    # Seed default admin user if no users exist
+    seed_default_user()
+
+
+def seed_default_user() -> None:
+    """Create a default admin user if no users exist in the database."""
+    from app.models.user import User
+    from app.core.auth import hash_password
+
+    db = SessionLocal()
+    try:
+        existing = db.query(User).first()
+        if existing:
+            ids_logger.info("Default user already exists, skipping seed")
+            return
+
+        default_user = User(
+            username="admin",
+            hashed_password=hash_password("admin123"),
+            is_active=True,
+        )
+        db.add(default_user)
+        db.commit()
+        ids_logger.info("Default user seeded: admin / admin123")
+    except Exception as e:
+        db.rollback()
+        ids_logger.warning(f"Could not seed default user: {e}")
+    finally:
+        db.close()
+
 
 def reset_database() -> None:
     """
@@ -84,7 +114,7 @@ def reset_database() -> None:
 
     WARNING: This will delete all data! Use with caution.
     """
-    from app.models import signature, alert, packet  # noqa: F401
+    from app.models import signature, alert, packet, user  # noqa: F401
 
     ids_logger.warning("Resetting database - all data will be deleted!")
     Base.metadata.drop_all(bind=engine)
