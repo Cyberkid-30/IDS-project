@@ -1,0 +1,90 @@
+.nav-rail {
+  width: var(--rail-width);
+  flex-shrink: 0;
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.nav-rail__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 18px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-rail__mark {
+  font-size: 20px;
+  color: var(--signal-active);
+  line-height: 1;
+}
+
+.nav-rail__title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.nav-rail__subtitle {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.nav-rail__items {
+  flex: 1;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-rail__item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.nav-rail__item:hover {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.nav-rail__item.is-active {
+  background: var(--bg-panel);
+  color: var(--signal-active);
+  box-shadow: inset 2px 0 0 var(--signal-active);
+}
+
+.nav-rail__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-rail__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-rail__footer {
+  padding: 14px 18px;
+  font-size: 10.5px;
+  color: var(--text-disabled);
+  border-top: 1px solid var(--border);
+}
