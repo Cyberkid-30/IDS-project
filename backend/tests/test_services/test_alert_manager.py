@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy.orm import Session
 
 from app.services.alert_manager import AlertManager
-from app.models.signature import Signature, SeverityLevel, ProtocolType
+from app.models.signature import Signature
+from app.core.enums import SeverityLevel, ProtocolType, AlertStatus
 from app.models.alert import Alert
 
 
@@ -98,7 +99,7 @@ class TestCreateAlert:
         first = alert_manager.create_alert(db_session, signature, packet, aggregate=True)
 
         # Manually bump timestamp back past the aggregation window
-        first.timestamp = datetime.utcnow() - timedelta(seconds=120)
+        first.timestamp = datetime.now(timezone.utc) - timedelta(seconds=120)
         db_session.flush()
 
         second = alert_manager.create_alert(db_session, signature, packet, aggregate=True)
@@ -179,12 +180,12 @@ class TestUpdateAlertStatus:
         packet = make_parsed_packet()
         alert = alert_manager.create_alert(db_session, signature, packet, aggregate=False)
 
-        updated = alert_manager.update_alert_status(db_session, alert.id, "resolved")
+        updated = alert_manager.update_alert_status(db_session, alert.id, AlertStatus.RESOLVED)
         assert updated is not None
         assert updated.status == "resolved"
 
     def test_not_found(self, db_session: Session, alert_manager: AlertManager):
-        updated = alert_manager.update_alert_status(db_session, 999, "resolved")
+        updated = alert_manager.update_alert_status(db_session, 999, AlertStatus.RESOLVED)
         assert updated is None
 
 

@@ -1,6 +1,7 @@
 from app.services.matcher import SignatureMatcher
 from app.services.parser import ParsedPacket
-from app.models.signature import Signature, SeverityLevel, ProtocolType
+from app.models.signature import Signature
+from app.core.enums import SeverityLevel, ProtocolType
 
 
 def make_sig(**kwargs) -> Signature:
@@ -12,6 +13,7 @@ def make_sig(**kwargs) -> Signature:
         source_port=None,
         dest_ip=None,
         dest_port=None,
+        tcp_flags=None,
         pattern=None,
         severity=SeverityLevel.MEDIUM,
         enabled=True,
@@ -110,6 +112,32 @@ class TestMatchPayload:
         assert self.matcher._match_payload("UNION SELECT", r"union.*select") is True
 
 
+class TestMatchTCPFlags:
+    def setup_method(self):
+        self.matcher = SignatureMatcher()
+
+    def test_no_signature_flags_matches_any(self):
+        assert self.matcher._match_tcp_flags("S", "") is True
+
+    def test_empty_signature_flags_matches_any(self):
+        assert self.matcher._match_tcp_flags("SA", "") is True
+
+    def test_single_flag_match(self):
+        assert self.matcher._match_tcp_flags("S", "S") is True
+
+    def test_multi_flag_match(self):
+        assert self.matcher._match_tcp_flags("SA", "SA") is True
+        assert self.matcher._match_tcp_flags("SA", "S") is True
+
+    def test_flag_mismatch(self):
+        assert self.matcher._match_tcp_flags("A", "S") is False
+        assert self.matcher._match_tcp_flags("R", "S") is False
+
+    def test_no_packet_flags(self):
+        assert self.matcher._match_tcp_flags(None, "S") is False
+        assert self.matcher._match_tcp_flags("", "S") is False
+
+
 class TestMatchSingle:
     def setup_method(self):
         self.matcher = SignatureMatcher()
@@ -152,6 +180,24 @@ class TestMatchSingle:
     def test_payload_pattern_match(self):
         sig = make_sig(pattern=r"(?i)select.*from")
         packet = make_packet(payload_text="SELECT * FROM users")
+        result = self.matcher._match_single(packet, sig)
+        assert result.matched is True
+
+    def test_tcp_flags_match(self):
+        sig = make_sig(protocol=ProtocolType.TCP, tcp_flags="S")
+        packet = make_packet(protocol="TCP", flags="S")
+        result = self.matcher._match_single(packet, sig)
+        assert result.matched is True
+
+    def test_tcp_flags_mismatch(self):
+        sig = make_sig(protocol=ProtocolType.TCP, tcp_flags="S")
+        packet = make_packet(protocol="TCP", flags="A")
+        result = self.matcher._match_single(packet, sig)
+        assert result.matched is False
+
+    def test_tcp_flags_ignored_for_non_tcp(self):
+        sig = make_sig(protocol=ProtocolType.ICMP, tcp_flags="S")
+        packet = make_packet(protocol="ICMP", flags=None)
         result = self.matcher._match_single(packet, sig)
         assert result.matched is True
 

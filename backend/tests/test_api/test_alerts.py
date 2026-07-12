@@ -3,7 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.alert import Alert
-from app.models.signature import Signature, SeverityLevel, ProtocolType
+from app.models.signature import Signature
+from app.core.enums import SeverityLevel, ProtocolType
 
 
 @pytest.fixture

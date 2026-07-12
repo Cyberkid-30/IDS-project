@@ -1,5 +1,5 @@
 from typing import Generator
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +12,8 @@ from app.database.session import get_db
 from app.api.deps import get_database, get_detector, get_alerts_manager
 from app.services.detector import DetectionEngine
 from app.services.alert_manager import AlertManager
-from app.models.signature import Signature, SeverityLevel, ProtocolType
+from app.models.signature import Signature
+from app.core.enums import SeverityLevel, ProtocolType
 from app.models.user import User
 from app.core.auth import hash_password, create_access_token
 from app.main import app
@@ -120,7 +121,7 @@ class MockDetectionEngine:
             return False
         self.is_running = True
         self._status["running"] = True
-        self._status["start_time"] = datetime.utcnow().isoformat()
+        self._status["start_time"] = datetime.now(timezone.utc).isoformat()
         return True
 
     def stop_detection(self):
