@@ -116,3 +116,5 @@ temp/
 # Keep data directory but ignore contents
 !data/.gitkeep
 
+
+ids.*
