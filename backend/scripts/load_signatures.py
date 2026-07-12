@@ -93,6 +93,7 @@ def create_signature_from_dict(data: dict) -> Signature:
         source_port=data.get("source_port"),
         dest_ip=data.get("dest_ip"),
         dest_port=data.get("dest_port"),
+        tcp_flags=data.get("tcp_flags"),
         pattern=data.get("pattern"),
         severity=severity_map.get(
             data.get("severity", "medium").lower(), SeverityLevel.MEDIUM
