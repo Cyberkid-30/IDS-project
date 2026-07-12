@@ -5,7 +5,7 @@ Provides SQLAlchemy engine and session factory for database operations.
 Uses SQLite as the database backend.
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 
@@ -21,6 +21,15 @@ engine = create_engine(
     echo=settings.DEBUG,  # Log SQL queries in debug mode
     pool_pre_ping=True,  # Verify connections before use
 )
+
+
+# Enable WAL mode for better concurrent read/write performance
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.close()
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

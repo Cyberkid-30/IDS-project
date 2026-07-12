@@ -5,7 +5,7 @@ This module provides the base class for all database models
 and common model mixins for shared functionality.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.orm import DeclarativeBase
 from uuid import uuid4
@@ -30,14 +30,14 @@ class TimestampMixin:
 
     created_at = Column(
         DateTime,
-        default=datetime.now,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
         doc="Timestamp when record was created",
     )
     updated_at = Column(
         DateTime,
-        default=datetime.now,
-        onupdate=datetime.now,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
         doc="Timestamp when record was last updated",
     )
