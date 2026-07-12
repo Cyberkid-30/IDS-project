@@ -2,7 +2,7 @@
   "signatures": [
     {
       "name": "ICMP Ping Sweep",
-      "description": "Detects ICMP echo requests commonly used in network reconnaissance and ping sweeps.",
+      "description": "Detects ICMP echo requests (ping) commonly used in network reconnaissance and ping sweeps.",
       "protocol": "icmp",
       "source_ip": null,
       "source_port": null,
@@ -22,6 +22,7 @@
       "source_port": null,
       "dest_ip": null,
       "dest_port": null,
+      "tcp_flags": "S",
       "pattern": null,
       "severity": "medium",
       "enabled": true,
