@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_database, Pagination
-from app.models.signature import Signature, SeverityLevel, ProtocolType
+from app.models.signature import Signature
+from app.core.enums import SeverityLevel, ProtocolType
 from app.schemas.signature import (
     SignatureCreate,
     SignatureUpdate,
@@ -169,6 +170,7 @@ def create_signature(
         source_port=signature_data.source_port,
         dest_ip=signature_data.dest_ip,
         dest_port=signature_data.dest_port,
+        tcp_flags=signature_data.tcp_flags,
         pattern=signature_data.pattern,
         severity=SeverityLevel(signature_data.severity.value),
         enabled=signature_data.enabled,

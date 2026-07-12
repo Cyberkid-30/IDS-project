@@ -167,7 +167,7 @@ def update_alert_status(
     Raises:
         404: Alert not found
     """
-    alert = alert_manager.update_alert_status(db, alert_id, status_update.status.value)
+    alert = alert_manager.update_alert_status(db, alert_id, status_update.status)
     if not alert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

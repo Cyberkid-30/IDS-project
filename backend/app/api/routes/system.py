@@ -8,7 +8,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.deps import get_detector
 from app.services.detector import DetectionEngine
@@ -76,8 +76,8 @@ def health_check(detector: DetectionEngine = Depends(get_detector)):
     try:
         from app.database.session import engine
 
-        engine.connect()
-        db_status = "healthy"
+        with engine.connect():
+            db_status = "healthy"
     except Exception as e:
         db_status = f"unhealthy: {str(e)}"
 
@@ -86,7 +86,7 @@ def health_check(detector: DetectionEngine = Depends(get_detector)):
 
     return HealthCheck(
         status="healthy",
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         database=db_status,
         detection=detection_status,
     )
