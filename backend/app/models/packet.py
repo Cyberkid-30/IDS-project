@@ -6,7 +6,7 @@ Note: In production, you might want to limit packet storage to reduce DB size.
 """
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database.base import Base, IDMixin
 
@@ -36,7 +36,7 @@ class Packet(Base, IDMixin):
     # Timestamp
     timestamp = Column(
         DateTime,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
         index=True,
         doc="Packet capture timestamp",

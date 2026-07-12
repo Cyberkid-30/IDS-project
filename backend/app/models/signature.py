@@ -7,37 +7,9 @@ Each signature contains matching criteria and metadata about the threat.
 
 from sqlalchemy import Column, String, Boolean, Text, Enum
 from sqlalchemy.orm import relationship
-import enum
 
 from app.database.base import Base, TimestampMixin, IDMixin
-
-
-class SeverityLevel(str, enum.Enum):
-    """
-    Severity levels for signatures and alerts.
-
-    Attributes:
-        LOW: Minor threat, informational
-        MEDIUM: Moderate threat, requires attention
-        HIGH: Serious threat, immediate attention needed
-        CRITICAL: Severe threat, immediate action required
-    """
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
-class ProtocolType(str, enum.Enum):
-    """
-    Network protocols supported for detection.
-    """
-
-    TCP = "tcp"
-    UDP = "udp"
-    ICMP = "icmp"
-    ANY = "any"
+from app.core.enums import SeverityLevel, ProtocolType
 
 
 class Signature(Base, IDMixin, TimestampMixin):
@@ -96,6 +68,11 @@ class Signature(Base, IDMixin, TimestampMixin):
         String(50), nullable=True, doc="Destination port(s) to match (null = any)"
     )
 
+    # TCP flag matching
+    tcp_flags = Column(
+        String(20), nullable=True, doc="TCP flags to match (e.g. 'S' for SYN-only)"
+    )
+
     # Payload pattern matching
     pattern = Column(Text, nullable=True, doc="Regex pattern to match in payload")
 
@@ -143,6 +120,7 @@ class Signature(Base, IDMixin, TimestampMixin):
             "source_port": self.source_port,
             "dest_ip": self.dest_ip,
             "dest_port": self.dest_port,
+            "tcp_flags": self.tcp_flags,
             "pattern": self.pattern,
             "severity": self.severity.value if self.severity else None,  # type: ignore
             "enabled": self.enabled,

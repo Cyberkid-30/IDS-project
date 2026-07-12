@@ -7,27 +7,10 @@ They contain details about the matched traffic and the triggering signature.
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database.base import Base, TimestampMixin, IDMixin
-from app.models.signature import SeverityLevel
-
-
-class AlertStatus(str, Enum):
-    """
-    Status states for alerts.
-
-    Attributes:
-        NEW: Newly created, not yet reviewed
-        ACKNOWLEDGED: Reviewed by analyst
-        RESOLVED: Investigation complete
-        FALSE_POSITIVE: Determined to be false alarm
-    """
-
-    NEW = "new"
-    ACKNOWLEDGED = "acknowledged"
-    RESOLVED = "resolved"
-    FALSE_POSITIVE = "false_positive"
+from app.core.enums import SeverityLevel, AlertStatus
 
 
 class Alert(Base, IDMixin, TimestampMixin):
@@ -91,15 +74,15 @@ class Alert(Base, IDMixin, TimestampMixin):
         doc="Severity level from signature",
     )
     status = Column(
-        String(20),
-        default="new",
+        Enum(AlertStatus),
+        default=AlertStatus.NEW,
         nullable=False,
         index=True,
-        doc="Alert status (new, acknowledged, resolved, false_positive)",
+        doc="Alert status",
     )
     timestamp = Column(
         DateTime,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
         index=True,
         doc="When the alert was triggered",
