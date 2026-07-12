@@ -1,0 +1,27 @@
+# IDS Backend - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Web Framework
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# Database
+sqlalchemy
+alembic
+
+# Packet Capture
+scapy
+
+# Logging
+loguru
+
+# Authentication
+PyJWT
+pwdlib[argon2]
+
+# Development (optional)
+pytest
+httpx
+rich
