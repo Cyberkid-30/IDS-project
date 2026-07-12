@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import Panel from '../components/Panel';
 import { systemApi } from '../api/system';
 import { alertsApi } from '../api/alerts';
+import { authApi } from '../api/auth';
 import { getApiBaseUrl, setBaseUrl } from '../api/client';
 import { formatDuration, formatNumber, formatTimestamp } from '../api/format';
+import { useAuth } from '../context/AuthContext';
 
 export default function SystemPage({ status }) {
+  const { user } = useAuth();
   const [network, setNetwork] = useState(null);
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
@@ -16,6 +19,12 @@ export default function SystemPage({ status }) {
   const [cleanupDays, setCleanupDays] = useState(30);
   const [cleanupResult, setCleanupResult] = useState(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   useEffect(() => {
     Promise.all([systemApi.network(), systemApi.config()])
@@ -68,6 +77,34 @@ export default function SystemPage({ status }) {
       setActionError(err.message);
     } finally {
       setCleanupBusy(false);
+    }
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSaved(false);
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    setPasswordBusy(true);
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      setPasswordSaved(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setPasswordError(err.detail || err.message || 'Could not change password.');
+    } finally {
+      setPasswordBusy(false);
     }
   }
 
@@ -175,6 +212,62 @@ export default function SystemPage({ status }) {
         </Panel>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Panel title="Account">
+            <form onSubmit={handleChangePassword}>
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label className="field__label">Signed in as</label>
+                <div className="mono" style={{ fontSize: 13 }}>{user?.username ?? '—'}</div>
+              </div>
+
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label className="field__label">Current password</label>
+                <input
+                  type="password"
+                  className="input"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordSaved(false); }}
+                />
+              </div>
+
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label className="field__label">New password</label>
+                <input
+                  type="password"
+                  className="input"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setPasswordSaved(false); }}
+                />
+                <span className="field__hint">At least 6 characters.</span>
+              </div>
+
+              <div className="field">
+                <label className="field__label">Confirm new password</label>
+                <input
+                  type="password"
+                  className="input"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordSaved(false); }}
+                />
+              </div>
+
+              {passwordError && <div className="field__error" style={{ marginTop: 10 }}>{passwordError}</div>}
+
+              <div className="form-actions" style={{ borderTop: 'none', paddingTop: 12, marginTop: 12 }}>
+                {passwordSaved && <span className="cell-muted" style={{ fontSize: 11.5, alignSelf: 'center' }}>Password updated.</span>}
+                <button
+                  type="submit"
+                  className="btn btn--primary btn--sm"
+                  disabled={passwordBusy || !currentPassword || !newPassword}
+                >
+                  {passwordBusy ? 'Updating…' : 'Update password'}
+                </button>
+              </div>
+            </form>
+          </Panel>
+
           <Panel title="Backend connection">
             <form onSubmit={handleSaveUrl}>
               <div className="field">

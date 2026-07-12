@@ -63,10 +63,10 @@ pip install -r requirements.txt
 ip link
 
 # Edit configuration
-nano .env.local
+nano .env
 ```
 
-Update `.env.local`:
+Update `.env`:
 
 ```env
 NETWORK_INTERFACE=eth0

@@ -6,7 +6,7 @@ from app.api.deps import get_database
 from app.core.auth import create_access_token, hash_password, verify_password
 from app.core.logging import ids_logger
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, Token
+from app.schemas.user import UserCreate, UserResponse, Token, PasswordChange
 
 router = APIRouter()
 
@@ -16,11 +16,15 @@ router = APIRouter()
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
-    description="Create a new user account.",
+    description=(
+        "Create a new user account. Requires an existing authenticated user "
+        "(SentryWatch is single-admin/provisioned-access, not public sign-up)."
+    ),
 )
 def register(
     user_data: UserCreate,
     db: Session = Depends(get_database),
+    _current_user: User = Depends(get_current_user),
 ):
     existing = db.query(User).filter(User.username == user_data.username).first()
     if existing:
@@ -79,3 +83,28 @@ def get_me(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+
+@router.patch(
+    "/me/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Change password",
+    description="Change the currently authenticated user's password. Requires the current password.",
+)
+def change_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_database),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, current_user.hashed_password):  # type: ignore
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+
+    current_user.hashed_password = hash_password(payload.new_password)  # type: ignore
+    db.add(current_user)
+    db.commit()
+
+    ids_logger.info(f"Password changed for user: {current_user.username}")
+    return None

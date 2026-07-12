@@ -10,6 +10,13 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=6, max_length=100, description="Password")
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(..., description="Current password")
+    new_password: str = Field(
+        ..., min_length=6, max_length=100, description="New password"
+    )
+
+
 class UserResponse(BaseModel):
     id: str = Field(..., description="Unique user ID")
     username: str = Field(..., description="Username")

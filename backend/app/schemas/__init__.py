@@ -28,6 +28,7 @@ from app.schemas.user import (
     UserResponse,
     Token,
     TokenData,
+    PasswordChange,
 )
 
 __all__ = [
@@ -53,4 +54,5 @@ __all__ = [
     "UserResponse",
     "Token",
     "TokenData",
+    "PasswordChange",
 ]

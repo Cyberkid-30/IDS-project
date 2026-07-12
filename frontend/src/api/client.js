@@ -1,4 +1,5 @@
 const DEFAULT_BASE_URL = 'http://localhost:8000';
+const TOKEN_KEY = 'ids_auth_token';
 
 function getBaseUrl() {
   return localStorage.getItem('ids_api_base_url') || DEFAULT_BASE_URL;
@@ -10,6 +11,18 @@ export function setBaseUrl(url) {
 
 export function getApiBaseUrl() {
   return getBaseUrl();
+}
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 class ApiError extends Error {
@@ -32,11 +45,16 @@ async function request(path, { method = 'GET', params, body } = {}) {
     });
   }
 
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   let res;
   try {
     res = await fetch(url.toString(), {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (err) {
@@ -45,6 +63,16 @@ async function request(path, { method = 'GET', params, body } = {}) {
       0,
       null
     );
+  }
+
+  if (res.status === 401) {
+    const wasLoggedIn = !!token;
+    clearToken();
+    // Don't fire for the login attempt itself (no token was set yet) -
+    // only when a previously-authenticated session gets rejected.
+    if (wasLoggedIn) {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+    }
   }
 
   if (res.status === 204) {

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './NavRail.css';
 
 const ICONS = {
@@ -43,6 +44,8 @@ const ITEMS = [
 ];
 
 export default function NavRail() {
+  const { user, logout } = useAuth();
+
   return (
     <nav className="nav-rail">
       <div className="nav-rail__brand">
@@ -67,6 +70,14 @@ export default function NavRail() {
         ))}
       </div>
 
+      <div className="nav-rail__user">
+        <span className="nav-rail__username mono" title={user?.username}>
+          {user?.username ?? '—'}
+        </span>
+        <button className="nav-rail__logout" onClick={logout} title="Log out">
+          Log out
+        </button>
+      </div>
       <div className="nav-rail__footer mono">v1.0.0</div>
     </nav>
   );
