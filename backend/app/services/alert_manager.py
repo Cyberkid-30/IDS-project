@@ -5,12 +5,13 @@ Handles alert creation, storage, aggregation, and statistics.
 """
 
 from typing import Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
 from app.models.alert import Alert
-from app.models.signature import Signature, SeverityLevel
+from app.models.signature import Signature
+from app.core.enums import SeverityLevel, AlertStatus
 from app.services.parser import ParsedPacket, PacketParser
 from app.core.logging import ids_logger
 
@@ -59,6 +60,8 @@ class AlertManager:
             if existing:
                 return self._aggregate_alert(db, existing)
 
+        now = datetime.now(timezone.utc)
+
         # Create new alert
         payload_snippet = self.parser.get_payload_snippet(
             packet, self.MAX_SNIPPET_LENGTH
@@ -73,8 +76,8 @@ class AlertManager:
             protocol=packet.protocol,
             payload_snippet=payload_snippet,
             severity=signature.severity,
-            status="new",
-            timestamp=datetime.utcnow(),
+            status=AlertStatus.NEW,
+            timestamp=now,
             packet_count=1,
             raw_packet=packet.raw_hex[:2000],  # Limit raw packet storage
         )
@@ -102,7 +105,7 @@ class AlertManager:
         Returns:
             Alert: Existing alert to aggregate or None
         """
-        window_start = datetime.utcnow() - timedelta(
+        window_start = datetime.now(timezone.utc) - timedelta(
             seconds=self.AGGREGATION_WINDOW_SECONDS
         )
 
@@ -113,7 +116,7 @@ class AlertManager:
                 Alert.source_ip == packet.source_ip,
                 Alert.dest_ip == packet.dest_ip,
                 Alert.timestamp >= window_start,
-                Alert.status == "new",
+                Alert.status == AlertStatus.NEW,
             )
             .first()
         )
@@ -130,7 +133,7 @@ class AlertManager:
             Alert: Updated alert
         """
         alert.packet_count += 1  # type: ignore
-        alert.timestamp = datetime.now()  # type: ignore # Update to latest time
+        alert.timestamp = datetime.now(timezone.utc)  # type: ignore
 
         ids_logger.debug(
             f"Alert aggregated: ID {alert.id}, count now {alert.packet_count}"
@@ -205,7 +208,7 @@ class AlertManager:
         return db.query(Alert).filter(Alert.id == alert_id).first()
 
     def update_alert_status(
-        self, db: Session, alert_id: str, status: str
+        self, db: Session, alert_id: str, status: AlertStatus
     ) -> Optional[Alert]:
         """
         Update an alert's status.
@@ -222,7 +225,7 @@ class AlertManager:
         if alert:
             alert.status = status  # type: ignore
             db.flush()
-            ids_logger.info(f"Alert {alert_id} status updated to {status}")
+            ids_logger.info(f"Alert {alert_id} status updated to {status.value}")
         return alert
 
     def delete_alert(self, db: Session, alert_id: str) -> bool:
@@ -258,7 +261,10 @@ class AlertManager:
 
         # Alerts by status
         new_alerts = (
-            db.query(func.count(Alert.id)).filter(Alert.status == "new").scalar() or 0
+            db.query(func.count(Alert.id))
+            .filter(Alert.status == AlertStatus.NEW)
+            .scalar()
+            or 0
         )
 
         # Alerts by severity
@@ -273,7 +279,7 @@ class AlertManager:
             severity_counts[severity.value] = count
 
         # Alerts today
-        today_start = datetime.utcnow().replace(
+        today_start = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         alerts_today = (
@@ -330,7 +336,7 @@ class AlertManager:
         Returns:
             int: Number of alerts deleted
         """
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         deleted = (
             db.query(Alert)

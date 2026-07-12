@@ -12,6 +12,7 @@ from app.models.signature import Signature
 from app.services.parser import ParsedPacket
 from app.utils.ip_utils import ip_matches_pattern
 from app.utils.regex_utils import pattern_matches
+from app.core.enums import ProtocolType
 from app.core.logging import ids_logger
 
 
@@ -60,7 +61,7 @@ class SignatureMatcher:
 
         for sig in signatures:
             # Skip disabled signatures
-            if not sig.enabled:
+            if not sig.enabled:  # type: ignore
                 continue
 
             result = self._match_single(packet, sig)
@@ -94,29 +95,38 @@ class SignatureMatcher:
         match_details["protocol"] = True
 
         # 2. Check source IP
-        if not ip_matches_pattern(packet.source_ip, signature.source_ip):
+        if not ip_matches_pattern(packet.source_ip, signature.source_ip):  # type: ignore
             return MatchResult(matched=False)
         match_details["source_ip"] = True
 
         # 3. Check destination IP
-        if not ip_matches_pattern(packet.dest_ip, signature.dest_ip):
+        if not ip_matches_pattern(packet.dest_ip, signature.dest_ip):  # type: ignore
             return MatchResult(matched=False)
         match_details["dest_ip"] = True
 
         # 4. Check source port
-        if not self._match_port(packet.source_port, signature.source_port):
+        if not self._match_port(packet.source_port, signature.source_port):  # type: ignore
             return MatchResult(matched=False)
         match_details["source_port"] = True
 
         # 5. Check destination port
-        if not self._match_port(packet.dest_port, signature.dest_port):
+        if not self._match_port(packet.dest_port, signature.dest_port):  # type: ignore
             return MatchResult(matched=False)
         match_details["dest_port"] = True
 
         # 6. Check payload pattern
-        if not self._match_payload(packet.payload_text, signature.pattern):
+        if not self._match_payload(packet.payload_text, signature.pattern):  # type: ignore
             return MatchResult(matched=False)
         match_details["payload"] = True
+
+        # 7. Check TCP flags (only applicable for TCP packets)
+        if signature.tcp_flags is not None:
+            if packet.protocol == "TCP" and not self._match_tcp_flags(
+                packet.flags,
+                signature.tcp_flags,  # type: ignore
+            ):
+                return MatchResult(matched=False)
+            match_details["tcp_flags"] = True
 
         # All checks passed - we have a match!
         return MatchResult(
@@ -203,6 +213,30 @@ class SignatureMatcher:
         # Use regex utility for pattern matching
         return pattern_matches(pattern, payload, case_sensitive=False)
 
+    def _match_tcp_flags(
+        self, packet_flags: Optional[str], signature_flags: str
+    ) -> bool:
+        """
+        Check if packet TCP flags match signature flags.
+
+        The signature flags string specifies which flag characters must be
+        present in the packet. Packet with none (no TCP flags) only matches
+        if signature_flags is empty.
+
+        Args:
+            packet_flags: TCP flags from packet (e.g. 'S', 'SA', 'A')
+            signature_flags: Required flag characters from signature
+
+        Returns:
+            bool: True if all required flags are present
+        """
+        # No packet flags - only matches empty signature flags
+        if not packet_flags:
+            return not signature_flags
+
+        # Check each required character is present in packet flags
+        return all(ch in packet_flags for ch in signature_flags)
+
     def test_signature(
         self, signature: Signature, test_packets: List[ParsedPacket]
     ) -> dict:
@@ -237,5 +271,3 @@ class SignatureMatcher:
             "matches": len(matches),
             "match_details": matches,
         }
-
-
