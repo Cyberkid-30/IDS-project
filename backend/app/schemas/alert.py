@@ -8,25 +8,8 @@ related to alert management and querying.
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from enum import Enum
 
-
-class SeverityLevel(str, Enum):
-    """Severity levels matching the signature severity."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
-class AlertStatus(str, Enum):
-    """Possible alert status values."""
-
-    NEW = "new"
-    ACKNOWLEDGED = "acknowledged"
-    RESOLVED = "resolved"
-    FALSE_POSITIVE = "false_positive"
+from app.core.enums import SeverityLevel, AlertStatus
 
 
 class AlertBase(BaseModel):

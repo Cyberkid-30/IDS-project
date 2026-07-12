@@ -8,25 +8,8 @@ related to signature management.
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
-from enum import Enum
 
-
-class SeverityLevel(str, Enum):
-    """Severity levels for signatures."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
-class ProtocolType(str, Enum):
-    """Supported network protocols."""
-
-    TCP = "tcp"
-    UDP = "udp"
-    ICMP = "icmp"
-    ANY = "any"
+from app.core.enums import SeverityLevel, ProtocolType
 
 
 class SignatureBase(BaseModel):
@@ -56,6 +39,9 @@ class SignatureBase(BaseModel):
     )
     dest_port: Optional[str] = Field(
         None, max_length=50, description="Destination port(s) to match"
+    )
+    tcp_flags: Optional[str] = Field(
+        None, max_length=20, description="TCP flags to match (e.g. 'S' for SYN-only)"
     )
     pattern: Optional[str] = Field(
         None, description="Regex pattern for payload matching"
@@ -107,6 +93,7 @@ class SignatureUpdate(BaseModel):
     source_port: Optional[str] = Field(None, max_length=50)
     dest_ip: Optional[str] = Field(None, max_length=50)
     dest_port: Optional[str] = Field(None, max_length=50)
+    tcp_flags: Optional[str] = Field(None, max_length=20)
     pattern: Optional[str] = None
     severity: Optional[SeverityLevel] = None
     enabled: Optional[bool] = None
