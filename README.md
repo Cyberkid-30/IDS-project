@@ -16,7 +16,8 @@ A signature-based Network Intrusion Detection System for small-scale business ne
 - **Extensible Signatures**: JSON-based signature definitions
 - **User Authentication**: JWT-based auth with Argon2 password hashing (register, login, token-protected endpoints)
 - **Bounded Packet Queue**: Captured packets are pushed onto a bounded queue and processed in batches by a dedicated writer thread — reduces SQLite lock contention under load
-- **Comprehensive Test Suite**: 148+ unit and integration tests
+- **UFW Firewall Integration**: Auto-block source IPs on critical alerts, plus manual block/unblock/list via API
+- **Comprehensive Test Suite**: 174+ unit and integration tests
 
 ### Frontend (React/Vite)
 
@@ -71,6 +72,10 @@ Update `.env`:
 ```env
 NETWORK_INTERFACE=eth0
 # Common names: eth0, ens33, enp0s3, wlan0
+
+# Firewall auto-blocking (requires ufw installed)
+UFW_ENABLED=false
+AUTO_BLOCK_CRITICAL=true
 ```
 
 ### 3. Initialize Backend Database
@@ -186,16 +191,22 @@ ids-project/
 │   │   │   ├── parser.py         # Packet parsing
 │   │   │   ├── matcher.py        # Signature matching
 │   │   │   ├── detector.py       # Detection engine
-│   │   │   └── alert_manager.py  # Alert CRUD and aggregation
+│   │   │   ├── alert_manager.py  # Alert CRUD and aggregation
+│   │   │   └── firewall.py       # UFW block/unblock/list
 │   │   ├── api/                  # REST API routes
 │   │   │   ├── deps.py           # FastAPI DI container
 │   │   │   ├── auth_deps.py      # Auth dependency
 │   │   │   └── routes/           # Endpoint definitions
+│   │       ├── alerts.py     # Alert endpoints
+│   │       ├── signatures.py # Signature endpoints
+│   │       ├── system.py     # System control endpoints
+│   │       ├── auth.py       # Authentication endpoints
+│   │       └── firewall.py   # Firewall block/unblock endpoints
 │   │   ├── signatures/           # JSON signature files
 │   │   └── workers/              # Background workers
 │   ├── data/                     # Database and logs
 │   ├── scripts/                  # Utility scripts
-│   ├── tests/                    # 148+ unit and integration tests
+│   ├── tests/                    # 174+ unit and integration tests
 │   ├── requirements.txt
 │   └── .env
 │
@@ -304,6 +315,16 @@ The UI polls the backend at configurable intervals (dashboards polls every 4–5
 | POST   | `/api/v1/signatures/{id}/toggle` | Toggle enabled            |
 | GET    | `/api/v1/signatures/categories`  | List signature categories |
 
+### Firewall
+
+| Method | Endpoint                            | Description                         |
+| ------ | ----------------------------------- | ----------------------------------- |
+| POST   | `/api/v1/firewall/block`            | Block an IP via ufw + DB record     |
+| DELETE | `/api/v1/firewall/unblock/{ip}`     | Remove a ufw deny rule for an IP    |
+| GET    | `/api/v1/firewall/blocked`          | List all currently blocked IPs      |
+
+The firewall endpoints require a JWT Bearer token. On critical-severity alerts, the detection engine automatically calls `POST /api/v1/firewall/block` if `AUTO_BLOCK_CRITICAL=true`. The actual ufw command is only executed when `UFW_ENABLED=true`.
+
 ---
 
 ## Usage Examples
@@ -376,6 +397,28 @@ curl -X POST http://localhost:8000/api/v1/signatures/1/toggle \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+### Firewall Management
+
+```bash
+# Block an IP address (adds ufw deny rule + database record)
+curl -X POST http://localhost:8000/api/v1/firewall/block \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"ip_address": "192.168.1.100", "reason": "Suspicious activity"}'
+
+# Remove a block
+curl -X DELETE http://localhost:8000/api/v1/firewall/unblock/192.168.1.100 \
+  -H "Authorization: Bearer $TOKEN"
+
+# List all blocked IPs
+curl http://localhost:8000/api/v1/firewall/blocked \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Auto-Blocking
+
+When `AUTO_BLOCK_CRITICAL=true` (default), any packet that triggers a **critical**-severity signature automatically records the source IP in the `blocked_ips` table. If `UFW_ENABLED=true` is also set, a `ufw deny from <ip>` command is executed on the host system as well.
+
 ### Adding Custom Signatures
 
 Edit `app/signatures/custom.json` and then reload:
@@ -389,7 +432,7 @@ curl -X POST http://localhost:8000/api/v1/system/signatures/reload \
 
 ## Running Tests
 
-### Backend Tests (148+ tests)
+### Backend Tests (174+ tests)
 
 ```bash
 cd backend
@@ -409,8 +452,8 @@ pytest tests/ --cov=app --cov-report=term-missing
 | Directory              | Contents                                                                            |
 | ---------------------- | ----------------------------------------------------------------------------------- |
 | `tests/test_utils/`    | IP validation, CIDR matching, regex compilation & matching                          |
-| `tests/test_services/` | Signature matcher (protocol/port/payload), alert manager (CRUD, aggregation, stats) |
-| `tests/test_api/`      | System control, alert CRUD, signature CRUD — all via TestClient                     |
+| `tests/test_services/` | Signature matcher (protocol/port/payload), alert manager (CRUD, aggregation, stats), firewall (UFW subprocess wrapper) |
+| `tests/test_api/`      | System control, alert CRUD, signature CRUD, firewall block/unblock/list — all via TestClient |
 
 Tests use an in-memory SQLite database with per-test transaction rollback. The detection engine and permission checks are mocked so root access is never required.
 
