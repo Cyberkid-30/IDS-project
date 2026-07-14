@@ -17,6 +17,8 @@ from app.services.parser import PacketParser
 from app.services.matcher import SignatureMatcher, MatchResult
 from app.services.alert_manager import AlertManager
 from app.models.signature import Signature
+from app.models.blocked_ip import BlockedIP
+from app.core.enums import SeverityLevel
 from app.database.session import get_session
 from app.core.config import settings
 from app.core.logging import ids_logger
@@ -132,11 +134,42 @@ class DetectionEngine:
         for match in matches:
             if match.matched and match.signature:
                 self._stats.alerts_generated += 1
-                self.alert_manager.create_alert(
+                alert = self.alert_manager.create_alert(
                     db=db, signature=match.signature, packet=parsed
                 )
 
+                # Auto-block source IP if critical severity and feature enabled
+                if (
+                    settings.AUTO_BLOCK_CRITICAL
+                    and match.signature.severity == SeverityLevel.CRITICAL
+                ): # type: ignore
+                    self._auto_block_ip(db, captured.source_ip, match.signature.name) # type: ignore
+
         return matches
+
+    def _auto_block_ip(self, db: Session, ip: str, reason: str) -> None:
+        """Block an IP via ufw and record in database if not already blocked."""
+        from app.services import firewall as fw
+
+        existing = db.query(BlockedIP).filter(BlockedIP.ip_address == ip).first()
+        if existing:
+            existing.alert_count += 1  # type: ignore
+            return
+
+        blocked = BlockedIP(
+            ip_address=ip,
+            reason=f"Auto-block: {reason}",
+            alert_count=1,
+        )
+        db.add(blocked)
+        ids_logger.warning(f"Auto-blocking critical source IP: {ip} ({reason})")
+
+        if settings.UFW_ENABLED:
+            threading.Thread(
+                target=fw.block_ip,
+                args=(ip,),
+                daemon=True,
+            ).start()
 
     # ------------------------------------------------------------------
     # Packet queue – writer thread

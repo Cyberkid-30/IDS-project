@@ -21,7 +21,7 @@ def create_tables() -> None:
     it only creates tables that don't exist.
     """
     # Import all models to register them with Base
-    from app.models import signature, alert, packet, user  # noqa: F401
+    from app.models import signature, alert, packet, user, blocked_ip  # noqa: F401
 
     ids_logger.info("Creating database tables...")
     Base.metadata.create_all(bind=engine)
@@ -196,7 +196,7 @@ def reset_database() -> None:
 
     WARNING: This will delete all data! Use with caution.
     """
-    from app.models import signature, alert, packet, user  # noqa: F401
+    from app.models import signature, alert, packet, user, blocked_ip  # noqa: F401
 
     ids_logger.warning("Resetting database - all data will be deleted!")
     Base.metadata.drop_all(bind=engine)

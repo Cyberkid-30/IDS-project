@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     # Alert settings
     ALERT_RETENTION_DAYS: int = 30
 
+    # Firewall (UFW) settings
+    UFW_ENABLED: bool = False
+    AUTO_BLOCK_CRITICAL: bool = True
+
     # JWT settings
     SECRET_KEY: str = "change-me-to-a-secure-random-secret-key"
     ALGORITHM: str = "HS256"

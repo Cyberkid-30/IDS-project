@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.api.routes import alerts, signatures, system, auth
+from app.api.routes import alerts, signatures, system, auth, firewall
 from app.api.auth_deps import get_current_user
 
 api_router = APIRouter()
@@ -27,5 +27,12 @@ api_router.include_router(
     system.router,
     prefix="/system",
     tags=["System"],
+    dependencies=[Depends(get_current_user)],
+)
+
+api_router.include_router(
+    firewall.router,
+    prefix="/firewall",
+    tags=["Firewall"],
     dependencies=[Depends(get_current_user)],
 )
