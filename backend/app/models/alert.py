@@ -8,6 +8,7 @@ They contain details about the matched traffic and the triggering signature.
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
+from typing import Optional
 
 from app.database.base import Base, TimestampMixin, IDMixin
 from app.core.enums import SeverityLevel, AlertStatus
@@ -96,6 +97,10 @@ class Alert(Base, IDMixin, TimestampMixin):
 
     # Relationships
     signature = relationship("Signature", back_populates="alerts")
+
+    @property
+    def signature_name(self) -> Optional[str]:
+        return self.signature.name if self.signature else None
 
     def __repr__(self) -> str:
         return (
