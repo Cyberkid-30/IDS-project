@@ -87,6 +87,20 @@ check_dependencies() {
     fi
 }
 
+# Ensure UFW is enabled and ready for auto-block
+setup_ufw() {
+    if ! command -v ufw &>/dev/null; then
+        echo -e "${YELLOW}UFW not found – skipping firewall setup. Install with: apt install ufw${NC}"
+        return
+    fi
+
+    echo "Configuring UFW firewall..."
+    ufw --force enable
+    echo -e "${GREEN}UFW enabled.${NC}"
+
+    echo -e "${GREEN}UFW firewall is ready for IDS auto-block.${NC}"
+}
+
 # Initialize database and load signatures
 init_database() {
     echo "Initializing database..."
@@ -124,6 +138,8 @@ main() {
     check_dependencies
     echo ""
     init_database
+    echo ""
+    setup_ufw
     echo ""
     start_server "$1"
 }
