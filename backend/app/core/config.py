@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     ALERT_RETENTION_DAYS: int = 30
 
     # Firewall (UFW) settings
-    UFW_ENABLED: bool = False
+    UFW_ENABLED: bool = True
     AUTO_BLOCK_CRITICAL: bool = True
 
     # JWT settings
