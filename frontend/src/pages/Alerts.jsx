@@ -5,6 +5,7 @@ import SeverityBadge from '../components/SeverityBadge';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import { alertsApi } from '../api/alerts';
+import { firewallApi } from '../api/firewall';
 import { formatTimestamp } from '../api/format';
 
 const SEVERITIES = ['low', 'medium', 'high', 'critical'];
@@ -19,6 +20,34 @@ export default function Alerts() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [blockedIps, setBlockedIps] = useState(new Set());
+  const [blockBusyIp, setBlockBusyIp] = useState(null);
+
+  const loadBlocked = useCallback(async () => {
+    try {
+      const data = await firewallApi.list();
+      setBlockedIps(new Set(data.blocked_ips.map((b) => b.ip_address)));
+    } catch {
+      // Non-fatal — block buttons just won't reflect already-blocked IPs.
+    }
+  }, []);
+
+  useEffect(() => { loadBlocked(); }, [loadBlocked]);
+
+  async function handleBlock(a) {
+    setBlockBusyIp(a.source_ip);
+    try {
+      await firewallApi.block({
+        ip_address: a.source_ip,
+        reason: `Alert #${a.id}: ${a.signature_name || `signature #${a.signature_id}`}`,
+      });
+      await loadBlocked();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBlockBusyIp(null);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -181,14 +210,23 @@ export default function Alerts() {
                       </td>
                       <td className="cell-muted">{formatTimestamp(a.timestamp)}</td>
                       <td>
-                        <button
-                          className="btn btn--ghost btn--sm"
-                          disabled={busyId === a.id}
-                          onClick={() => handleDelete(a.id)}
-                          aria-label="Delete alert"
-                        >
-                          Delete
-                        </button>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            className="btn btn--ghost btn--sm"
+                            disabled={blockBusyIp === a.source_ip || blockedIps.has(a.source_ip)}
+                            onClick={() => handleBlock(a)}
+                          >
+                            {blockedIps.has(a.source_ip) ? 'Blocked' : blockBusyIp === a.source_ip ? 'Blocking…' : 'Block IP'}
+                          </button>
+                          <button
+                            className="btn btn--ghost btn--sm"
+                            disabled={busyId === a.id}
+                            onClick={() => handleDelete(a.id)}
+                            aria-label="Delete alert"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
