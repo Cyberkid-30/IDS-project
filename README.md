@@ -21,9 +21,8 @@ A signature-based Network Intrusion Detection System for small-scale business ne
 
 ### Frontend (React/Vite)
 
-- **Live Dashboard**: Real-time detection status, alert stats, severity breakdown, top source IPs, most triggered signatures, and blocked IP count
-- **Alert Management**: Paginated, filterable alert list with inline status changes, one-click IP block, and delete confirmation
-- **Firewall Management**: Dedicated page listing blocked IPs (manual and auto-blocked), a block-IP form, and unblock with confirmation
+- **Live Dashboard**: Real-time detection status, alert stats, severity breakdown, top source IPs, and most triggered signatures
+- **Alert Management**: Paginated, filterable alert list with inline status changes and delete confirmation
 - **Signature CRUD**: Full create, read, update, delete, and toggle for detection signatures
 - **Detection Engine Control**: Start/stop detection, reload signatures, view system config and network info
 - **Configurable Backend URL**: Change the API target at runtime via the System page (no rebuild required)
@@ -220,13 +219,11 @@ ids-project/
 │   │   │   ├── alerts.js         # Alert API calls
 │   │   │   ├── signatures.js     # Signature API calls
 │   │   │   ├── system.js         # System API calls
-│   │   │   ├── firewall.js       # Firewall block/unblock/list API calls
 │   │   │   └── format.js         # Formatting helpers
 │   │   ├── pages/                # Route pages
 │   │   │   ├── Dashboard.jsx     # Live stats and overview
 │   │   │   ├── Alerts.jsx        # Paginated alert list
 │   │   │   ├── AlertDetail.jsx   # Single alert view
-│   │   │   ├── Firewall.jsx      # Blocked IP list, block/unblock
 │   │   │   ├── Signatures.jsx    # Signature CRUD
 │   │   │   └── SystemPage.jsx    # Engine control and config
 │   │   ├── components/           # Reusable UI components
@@ -263,8 +260,7 @@ ids-project/
 | ---------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **Dashboard**    | `/`           | Live detection status, alert stats, severity bar chart, top source IPs, most triggered signatures, recent alerts       |
 | **Alerts**       | `/alerts`     | Paginated alert table with severity/status/source IP filters, inline status change, and delete                         |
-| **Alert Detail** | `/alerts/:id` | Full alert details, payload snippet, connection info, signature info, status change, block/unblock source IP           |
-| **Firewall**     | `/firewall`   | List of blocked IPs (manual + auto-blocked), block-IP form, unblock with confirmation                                  |
+| **Alert Detail** | `/alerts/:id` | Full alert details, payload snippet, connection info, signature info, status change                                    |
 | **Signatures**   | `/signatures` | Signature CRUD table with enable/disable toggle, edit modal, create modal, category/severity filters                   |
 | **System**       | `/system`     | Detection engine start/stop, reload signatures, network info, config display, alert cleanup, backend URL configuration |
 

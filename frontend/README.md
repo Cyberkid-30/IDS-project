@@ -4,9 +4,8 @@ A React dashboard for the [Network Intrusion Detection System backend](../backen
 
 ## Features
 
-- **Dashboard** — detection state, packet/alert counters, severity breakdown, recent alerts, top source IPs, most-triggered signatures, and a live count of blocked IPs
-- **Alerts** — paginated, filterable (severity, status, source IP) alert list; inline status updates; one-click IP block; delete; full alert detail view with payload snippet
-- **Firewall** — live list of IPs currently blocked via ufw (including auto-blocks from critical alerts), manual block form, and unblock with confirmation
+- **Dashboard** — detection state, packet/alert counters, severity breakdown, recent alerts, top source IPs, most-triggered signatures
+- **Alerts** — paginated, filterable (severity, status, source IP) alert list; inline status updates; delete; full alert detail view with payload snippet
 - **Signatures** — full CRUD on detection signatures, including enable/disable toggles, category and severity filters, and regex pattern validation feedback from the API
 - **System** — start/stop the detection engine, reload signatures, view network interfaces and configuration, run alert cleanup, and point the dashboard at a different backend URL
 - A persistent **pulse strip** showing at a glance whether the detection engine is currently running
@@ -43,13 +42,13 @@ By default, the dashboard talks to the backend at `http://localhost:8000`. If yo
 
 ```
 src/
-├── api/             # Thin fetch wrappers per backend resource (alerts, signatures, system, firewall)
+├── api/             # Thin fetch wrappers per backend resource (alerts, signatures, system)
 │   ├── client.js     # Shared request helper, error handling, configurable base URL
 │   └── format.js     # Display formatting (timestamps, durations, severity/status labels)
 ├── components/       # Reusable UI primitives (Panel, Modal, badges, nav rail, pulse strip)
 ├── hooks/
 │   └── usePolling.js # Polls a fetcher on an interval, pausing when the tab is hidden
-├── pages/            # One component per route: Dashboard, Alerts, AlertDetail, Firewall, Signatures, System
+├── pages/            # One component per route: Dashboard, Alerts, AlertDetail, Signatures, System
 ├── styles/           # Design tokens (CSS variables) and shared component styles
 ├── App.jsx           # Route definitions and shared layout (nav rail, pulse strip, connection banner)
 └── main.jsx           # Entry point
@@ -62,4 +61,4 @@ There's no build-time environment variable for the backend URL — it's set at r
 ## Notes
 
 - This app expects the backend's `/api/v1` routes as documented in the backend README. If you change the API prefix or response shapes on the backend, update `src/api/*.js` and `src/api/format.js` to match.
-- The backend requires a JWT Bearer token for everything except `/api/v1/auth/login`; the dashboard attaches it automatically after sign-in and redirects to `/login` on a 401. There's still a single admin account by design — this is intended for a local lab / trusted network setup, not public multi-user exposure.
+- No authentication is implemented on either side — this is intended for a local lab / trusted network setup, not public exposure.

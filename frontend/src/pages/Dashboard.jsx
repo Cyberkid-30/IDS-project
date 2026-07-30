@@ -6,7 +6,6 @@ import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import { usePolling } from '../hooks/usePolling';
 import { alertsApi } from '../api/alerts';
-import { firewallApi } from '../api/firewall';
 import { formatDuration, formatNumber, formatRelativeTime, SEVERITY_META } from '../api/format';
 
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low'];
@@ -18,7 +17,6 @@ export default function Dashboard({ status }) {
     () => alertsApi.list({ page: 1, page_size: 8 }),
     5000
   );
-  const { data: firewall } = usePolling(() => firewallApi.list(), 8000);
 
   const sevCounts = stats
     ? {
@@ -68,12 +66,6 @@ export default function Dashboard({ status }) {
           label="Signatures loaded"
           value={formatNumber(status?.signatures_loaded)}
           sub="active ruleset"
-        />
-        <StatTile
-          label="Blocked IPs"
-          value={formatNumber(firewall?.total)}
-          accent={firewall?.total ? 'var(--signal-active)' : undefined}
-          sub="active ufw deny rules"
         />
       </div>
 

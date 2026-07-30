@@ -4,7 +4,6 @@ import Panel from '../components/Panel';
 import SeverityBadge from '../components/SeverityBadge';
 import StatusBadge from '../components/StatusBadge';
 import { alertsApi } from '../api/alerts';
-import { firewallApi } from '../api/firewall';
 import { formatTimestamp } from '../api/format';
 
 const STATUSES = ['new', 'acknowledged', 'resolved', 'false_positive'];
@@ -15,10 +14,6 @@ export default function AlertDetail() {
   const [alert, setAlert] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [blockedEntry, setBlockedEntry] = useState(null);
-  const [blockChecked, setBlockChecked] = useState(false);
-  const [blockBusy, setBlockBusy] = useState(false);
-  const [blockError, setBlockError] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -30,45 +25,9 @@ export default function AlertDetail() {
     }
   }, [id]);
 
-  const checkBlocked = useCallback(async (sourceIp) => {
-    try {
-      const list = await firewallApi.list();
-      setBlockedEntry(list.blocked_ips.find((b) => b.ip_address === sourceIp) || null);
-    } catch {
-      // Non-fatal — the block button just falls back to "not blocked".
-    } finally {
-      setBlockChecked(true);
-    }
-  }, []);
-
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    if (alert?.source_ip) checkBlocked(alert.source_ip);
-  }, [alert?.source_ip, checkBlocked]);
-
-  async function handleBlockToggle() {
-    setBlockBusy(true);
-    setBlockError(null);
-    try {
-      if (blockedEntry) {
-        await firewallApi.unblock(alert.source_ip);
-        setBlockedEntry(null);
-      } else {
-        await firewallApi.block({
-          ip_address: alert.source_ip,
-          reason: `Alert #${alert.id}: ${alert.signature_name || `signature #${alert.signature_id}`}`,
-        });
-        await checkBlocked(alert.source_ip);
-      }
-    } catch (err) {
-      setBlockError(err.detail || err.message || 'Firewall action failed.');
-    } finally {
-      setBlockBusy(false);
-    }
-  }
 
   async function handleStatusChange(newStatus) {
     setBusy(true);
@@ -136,37 +95,17 @@ export default function AlertDetail() {
               <option key={s} value={s}>{s.replace('_', ' ')}</option>
             ))}
           </select>
-          <button
-            className={`btn btn--sm ${blockedEntry ? 'btn--ghost' : 'btn--primary'}`}
-            disabled={blockBusy || !blockChecked}
-            onClick={handleBlockToggle}
-            title={blockedEntry ? 'Remove the ufw deny rule for this IP' : 'Add a ufw deny rule for this IP'}
-          >
-            {blockBusy ? 'Working…' : blockedEntry ? 'Unblock source IP' : 'Block source IP'}
-          </button>
           <button className="btn btn--danger btn--sm" disabled={busy} onClick={handleDelete}>Delete alert</button>
         </div>
       </div>
 
       {error && <div className="field__error" style={{ marginBottom: 12 }}>{error.message}</div>}
-      {blockError && <div className="field__error" style={{ marginBottom: 12 }}>{blockError}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <Panel title="Connection details">
           <DetailGrid
             rows={[
-              [
-                'Source',
-                <>
-                  {alert.source_ip}{alert.source_port ? `:${alert.source_port}` : ''}
-                  {blockedEntry && (
-                    <span className="status-pill" style={{ marginLeft: 8 }}>
-                      <span className="status-pill__dot" style={{ background: 'var(--signal-active)' }} />
-                      <span style={{ color: 'var(--signal-active)' }}>Blocked</span>
-                    </span>
-                  )}
-                </>,
-              ],
+              ['Source', `${alert.source_ip}${alert.source_port ? `:${alert.source_port}` : ''}`],
               ['Destination', `${alert.dest_ip}${alert.dest_port ? `:${alert.dest_port}` : ''}`],
               ['Protocol', alert.protocol?.toUpperCase()],
               ['Packet count', alert.packet_count],
