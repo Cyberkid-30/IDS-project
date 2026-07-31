@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Alerts from './pages/Alerts';
 import AlertDetail from './pages/AlertDetail';
 import Signatures from './pages/Signatures';
+import Firewall from './pages/Firewall';
 import SystemPage from './pages/SystemPage';
 import { usePolling } from './hooks/usePolling';
 import { systemApi } from './api/system';
@@ -34,6 +35,7 @@ function Console() {
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/alerts/:id" element={<AlertDetail />} />
             <Route path="/signatures" element={<Signatures />} />
+            <Route path="/firewall" element={<Firewall />} />
             <Route path="/system" element={<SystemPage status={status} />} />
           </Routes>
         </div>

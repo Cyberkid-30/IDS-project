@@ -34,12 +34,24 @@ const ICONS = {
       />
     </svg>
   ),
+  firewall: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <path
+        d="M10 2.5l6.5 2.4v4.6c0 4.2-2.7 7.1-6.5 8-3.8-.9-6.5-3.8-6.5-8V4.9L10 2.5z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M7.3 10l1.9 1.9 3.5-3.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 const ITEMS = [
   { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
   { to: '/alerts', label: 'Alerts', icon: 'alerts' },
   { to: '/signatures', label: 'Signatures', icon: 'signatures' },
+  { to: '/firewall', label: 'Firewall', icon: 'firewall' },
   { to: '/system', label: 'System', icon: 'system' },
 ];
 
