@@ -1,22 +1,21 @@
-from typing import Generator
+from collections.abc import Generator
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
-
+from app.api.deps import get_alerts_manager, get_database, get_detector
+from app.core.auth import create_access_token, hash_password
+from app.core.enums import ProtocolType, SeverityLevel
 from app.database.base import Base
 from app.database.session import get_db
-from app.api.deps import get_database, get_detector, get_alerts_manager
-from app.services.detector import DetectionEngine
-from app.services.alert_manager import AlertManager
-from app.models.signature import Signature
-from app.core.enums import SeverityLevel, ProtocolType
-from app.models.user import User
-from app.core.auth import hash_password, create_access_token
 from app.main import app
+from app.models.signature import Signature
+from app.models.user import User
+from app.services.alert_manager import AlertManager
+from app.services.detector import DetectionEngine
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -109,6 +108,8 @@ class MockDetectionEngine:
             "signatures_loaded": 0,
             "packets_processed": 0,
             "alerts_generated": 0,
+            "packets_dropped_blocked": 0,
+            "blocked_ips": 0,
             "start_time": None,
             "uptime_seconds": 0.0,
             "interface": "lo",
@@ -129,6 +130,9 @@ class MockDetectionEngine:
         self._status["running"] = False
 
     def reload_signatures(self) -> int:
+        return 0
+
+    def reload_blocked_ips(self) -> int:
         return 0
 
     def get_status(self) -> dict:

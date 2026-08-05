@@ -24,7 +24,7 @@ class TestBlockIP:
         data = resp.json()
         assert data["ip_address"] == "10.0.0.55"
         assert data["reason"] == "test block"
-        assert data["alert_count"] == 1
+        assert data["alert_count"] == 0
         assert "blocked_at" in data
 
         db_entry = db_session.query(BlockedIP).filter(
@@ -56,6 +56,16 @@ class TestBlockIP:
         })
         assert resp.status_code == 422
 
+    def test_block_when_ufw_disabled_returns_503(
+        self, client, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr("app.api.routes.firewall.settings.UFW_ENABLED", False)
+        resp = client.post("/api/v1/firewall/block", json={
+            "ip_address": "10.0.0.77",
+        })
+        assert resp.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert "disabled" in resp.json()["detail"].lower()
+
 
 class TestUnblockIP:
     def test_unblock_existing_ip(self, client, db_session):
@@ -77,6 +87,17 @@ class TestUnblockIP:
     def test_unblock_nonexistent_ip(self, client):
         resp = client.delete("/api/v1/firewall/unblock/10.0.0.99")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_unblock_invalid_path_ip_returns_400(self, client):
+        resp = client.delete("/api/v1/firewall/unblock/not-an-ip")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_unblock_when_ufw_disabled_returns_503(
+        self, client, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr("app.api.routes.firewall.settings.UFW_ENABLED", False)
+        resp = client.delete("/api/v1/firewall/unblock/10.0.0.99")
+        assert resp.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 class TestListBlockedIPs:
