@@ -46,6 +46,9 @@ A signature-based Network Intrusion Detection System for small-scale business ne
 ### 1. Clone & Setup Backend
 
 ```bash
+# Clone repo
+git clone https://github.com/Cyberkid-30/IDS-project.git
+
 # Navigate to the backend directory
 cd backend
 
@@ -317,11 +320,11 @@ The UI polls the backend at configurable intervals (dashboards polls every 4–5
 
 ### Firewall
 
-| Method | Endpoint                            | Description                         |
-| ------ | ----------------------------------- | ----------------------------------- |
-| POST   | `/api/v1/firewall/block`            | Block an IP via ufw + DB record     |
-| DELETE | `/api/v1/firewall/unblock/{ip}`     | Remove a ufw deny rule for an IP    |
-| GET    | `/api/v1/firewall/blocked`          | List all currently blocked IPs      |
+| Method | Endpoint                        | Description                      |
+| ------ | ------------------------------- | -------------------------------- |
+| POST   | `/api/v1/firewall/block`        | Block an IP via ufw + DB record  |
+| DELETE | `/api/v1/firewall/unblock/{ip}` | Remove a ufw deny rule for an IP |
+| GET    | `/api/v1/firewall/blocked`      | List all currently blocked IPs   |
 
 The firewall endpoints require a JWT Bearer token. On critical-severity alerts, the detection engine automatically calls `POST /api/v1/firewall/block` if `AUTO_BLOCK_CRITICAL=true`. The actual ufw command is only executed when `UFW_ENABLED=true`.
 
@@ -449,11 +452,11 @@ pytest tests/ --cov=app --cov-report=term-missing
 
 **Backend test layout:**
 
-| Directory              | Contents                                                                            |
-| ---------------------- | ----------------------------------------------------------------------------------- |
-| `tests/test_utils/`    | IP validation, CIDR matching, regex compilation & matching                          |
+| Directory              | Contents                                                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `tests/test_utils/`    | IP validation, CIDR matching, regex compilation & matching                                                             |
 | `tests/test_services/` | Signature matcher (protocol/port/payload), alert manager (CRUD, aggregation, stats), firewall (UFW subprocess wrapper) |
-| `tests/test_api/`      | System control, alert CRUD, signature CRUD, firewall block/unblock/list — all via TestClient |
+| `tests/test_api/`      | System control, alert CRUD, signature CRUD, firewall block/unblock/list — all via TestClient                           |
 
 Tests use an in-memory SQLite database with per-test transaction rollback. The detection engine and permission checks are mocked so root access is never required.
 
