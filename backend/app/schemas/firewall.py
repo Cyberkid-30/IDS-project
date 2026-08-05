@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+import ipaddress
+from pydantic import BaseModel, Field, field_validator, field_serializer
 
 
 class FirewallBlockRequest(BaseModel):
@@ -16,6 +17,15 @@ class FirewallBlockRequest(BaseModel):
         description="Reason for blocking",
     )
 
+    @field_validator("ip_address")
+    @classmethod
+    def validate_ip(cls, ip: str) -> str:
+        try:
+            ipaddress.ip_address(ip)
+        except ValueError as exc:
+            raise ValueError("Invalid IP address") from exc
+        return ip
+
 
 class FirewallBlockResponse(BaseModel):
     id: str
@@ -25,6 +35,10 @@ class FirewallBlockResponse(BaseModel):
     blocked_at: datetime = Field(..., validation_alias="created_at")
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("blocked_at")
+    def _serialize_blocked_at(self, value: datetime) -> str:
+        return value.isoformat()
 
 
 class FirewallBlockList(BaseModel):
