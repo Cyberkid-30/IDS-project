@@ -5,24 +5,23 @@ Orchestrates the detection pipeline: sniffer -> parser -> matcher -> alert.
 This is the main service that coordinates all components.
 """
 
-from typing import List, Optional
-from datetime import datetime, timezone
-import threading
 import queue
-import time
+import threading
+from datetime import datetime, timezone
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
-from app.services.sniffer import PacketSniffer, CapturedPacket
-from app.services.parser import PacketParser
-from app.services.matcher import SignatureMatcher, MatchResult
-from app.services.alert_manager import AlertManager
-from app.models.signature import Signature
-from app.models.blocked_ip import BlockedIP
-from app.core.enums import SeverityLevel
-from app.database.session import get_session
 from app.core.config import settings
+from app.core.enums import SeverityLevel
 from app.core.logging import ids_logger
-
+from app.database.session import get_session
+from app.models.blocked_ip import BlockedIP
+from app.models.signature import Signature
+from app.services.alert_manager import AlertManager
+from app.services.matcher import MatchResult, SignatureMatcher
+from app.services.parser import PacketParser
+from app.services.sniffer import CapturedPacket, PacketSniffer
 
 _BATCH_SIZE = 50
 
@@ -68,9 +67,16 @@ class DetectionEngine:
         self.alert_manager = alert_manager or AlertManager()
 
         self.is_running = False
-        self._signatures: List[Signature] = []
+        self._signatures: list[Signature] = []
         self._signatures_lock = threading.Lock()
         self._stats = DetectionStats()
+
+        # In-memory blocked-IP set. Kept in sync with the blocked_ips
+        # table so the capture thread can drop offending packets without
+        # touching the database on every packet.  Guarded by
+        # _blocked_lock; _reload_blocked_ips swaps in a fresh copy.
+        self._blocked_ips: set[str] = set()
+        self._blocked_lock = threading.Lock()
 
         # Bounded packet queue – decouples capture thread from DB writes
         self._packet_queue: queue.Queue = queue.Queue(
@@ -111,9 +117,63 @@ class DetectionEngine:
         finally:
             db.close()
 
+    def load_blocked_ips(self, db: Session) -> int:
+        """
+        Load blocked IP addresses from the database into an in-memory set.
+
+        The capture thread consults this set to drop packets from blocked
+        sources before they enter the detection pipeline, avoiding a DB
+        round-trip per packet.
+
+        Args:
+            db: Database session
+
+        Returns:
+            int: Number of blocked IPs loaded
+        """
+        rows = db.query(BlockedIP).all()
+        blocked = {row.ip_address for row in rows}  # type: ignore[union-attr]
+        with self._blocked_lock:
+            self._blocked_ips = blocked  # type: ignore
+        count = len(blocked)
+        ids_logger.info(f"Loaded {count} blocked IPs")
+        return count
+
+    def reload_blocked_ips(self) -> int:
+        """
+        Reload the blocked-IP set from the database.
+
+        Called by the firewall routes after a block/unblock mutation so the
+        capture thread picks up the change without a restart.  Matches the
+        reload_signatures() pattern used for signature hot-reload.
+
+        Returns:
+            int: Number of blocked IPs loaded
+        """
+        db = get_session()
+        try:
+            return self.load_blocked_ips(db)
+        finally:
+            db.close()
+
+    def is_ip_blocked(self, ip: Optional[str]) -> bool:
+        """
+        Thread-safe membership test against the in-memory blocked-IP set.
+
+        Args:
+            ip: Source IP to check
+
+        Returns:
+            bool: True if the IP is currently in the blocked set
+        """
+        if not ip:
+            return False
+        with self._blocked_lock:
+            return ip in self._blocked_ips
+
     def process_packet(
         self, captured: CapturedPacket, db: Session
-    ) -> List[MatchResult]:
+    ) -> list[MatchResult]:
         """
         Process a single captured packet through the detection pipeline.
 
@@ -124,6 +184,27 @@ class DetectionEngine:
         Returns:
             list: List of matching results
         """
+        # Drop packets from blocked sources before they enter the matching
+        # pipeline. The in-memory set is the fast path; the authoritative
+        # check is an indexed SELECT against blocked_ips, ensuring correctness
+        # even when the in-memory set is stale (e.g. in the few-millisecond
+        # window between a manual block firing the UFW rule and the route
+        # handler calling reload_blocked_ips()).
+        if self.is_ip_blocked(captured.source_ip):
+            self._stats.packets_dropped_blocked += 1
+            return []
+        if self._is_blocked_in_db(db, captured.source_ip):
+            # Refresh the in-memory set so subsequent packets from this IP
+            # take the fast path instead of re-hitting the DB.
+            try:
+                self.load_blocked_ips(db)
+            except Exception as e:
+                ids_logger.warning(
+                    f"In-memory blocked set refresh failed after DB hit: {e}"
+                )
+            self._stats.packets_dropped_blocked += 1
+            return []
+
         self._stats.packets_processed += 1
 
         parsed = self.parser.parse(captured)
@@ -142,10 +223,35 @@ class DetectionEngine:
                 if (
                     settings.AUTO_BLOCK_CRITICAL
                     and match.signature.severity == SeverityLevel.CRITICAL
-                ): # type: ignore
-                    self._auto_block_ip(db, captured.source_ip, match.signature.name) # type: ignore
+                ):  # type: ignore
+                    self._auto_block_ip(db, captured.source_ip, match.signature.name)  # type: ignore
 
         return matches
+
+    def _is_blocked_in_db(self, db: Session, ip: Optional[str]) -> bool:
+        """
+        Authoritative check against the blocked_ips table.
+
+        Used as a fallback when the in-memory set misses so that the
+        "IDS will not process packets from blocked IPs" guarantee holds
+        even during the reload race window. Hits a unique indexed column,
+        so this is a fast point lookup.
+        """
+        if not ip:
+            return False
+        try:
+            return (
+                db.query(BlockedIP)
+                .filter(BlockedIP.ip_address == ip)
+                .first()
+                is not None
+            )
+        except Exception as e:
+            # If the DB is unreachable we fail open (allow the packet),
+            # matching the original behavior — a downed DB should not turn
+            # the IDS into an open door for the wider network.
+            ids_logger.error(f"Blocked-IP DB check failed for {ip}: {e}")
+            return False
 
     def _auto_block_ip(self, db: Session, ip: str, reason: str) -> None:
         """Block an IP via ufw and record in database if not already blocked."""
@@ -162,6 +268,12 @@ class DetectionEngine:
             alert_count=1,
         )
         db.add(blocked)
+
+        # Immediately add to the in-memory set so subsequent packets from
+        # this source are dropped without waiting for a full DB reload.
+        with self._blocked_lock:
+            self._blocked_ips.add(ip)
+
         ids_logger.warning(f"Auto-blocking critical source IP: {ip} ({reason})")
 
         if settings.UFW_ENABLED:
@@ -179,11 +291,24 @@ class DetectionEngine:
         """
         Sniffer callback – push packet onto the bounded queue.
 
+        This is a *fast-path* drop for packets whose source IP is already in
+        the in-memory blocked set. It is not authoritative — the final,
+        DB-backed check happens in process_packet() so the guarantee holds
+        even during the reload race window (a few packets may slip past
+        this in-memory filter before reload_blocked_ips() runs, but they
+        will be rejected in the writer thread before matching/alerting).
+
         If the queue is full the packet is dropped and a warning is
         emitted once per burst to avoid log spam.
         """
         if not self.is_running:
             return
+
+        # Fast path: in-memory check, no DB round-trip.
+        if self.is_ip_blocked(captured.source_ip):
+            self._stats.packets_dropped_blocked += 1
+            return
+
         try:
             self._packet_queue.put(captured, block=False)
         except queue.Full:
@@ -196,7 +321,7 @@ class DetectionEngine:
         contention.
         """
         while not self._writer_stop_event.is_set():
-            batch: List[CapturedPacket] = []
+            batch: list[CapturedPacket] = []
 
             # Wait for at least one packet (with a timeout so we can
             # check the stop flag periodically).
@@ -281,6 +406,9 @@ class DetectionEngine:
                 ids_logger.warning(
                     "No signatures loaded - detection may be ineffective"
                 )
+            # Prime the in-memory blocked-IP set so that already-blocked
+            # sources are filtered as soon as capture begins.
+            self.load_blocked_ips(db)
         finally:
             db.close()
 
@@ -348,6 +476,8 @@ class DetectionEngine:
             "signatures_loaded": sig_count,
             "packets_processed": self._stats.packets_processed,
             "alerts_generated": self._stats.alerts_generated,
+            "packets_dropped_blocked": self._stats.packets_dropped_blocked,
+            "blocked_ips": len(self._blocked_ips),
             "start_time": (
                 self._stats.start_time.isoformat() if self._stats.start_time else None
             ),
@@ -364,6 +494,7 @@ class DetectionStats:
     def __init__(self):
         self.packets_processed: int = 0
         self.alerts_generated: int = 0
+        self.packets_dropped_blocked: int = 0
         self.start_time: Optional[datetime] = None
 
     def get_uptime_seconds(self) -> float:
@@ -377,6 +508,5 @@ class DetectionStats:
         """Reset all statistics."""
         self.packets_processed = 0
         self.alerts_generated = 0
+        self.packets_dropped_blocked = 0
         self.start_time = None
-
-
